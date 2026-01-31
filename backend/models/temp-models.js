@@ -46,6 +46,8 @@ const User = {
       user = global.tempUsers.find(u => u.b2b_user_id === query.b2b_user_id);
     } else if (query._id) {
       user = global.tempUsers.find(u => u._id === query._id);
+    } else if (query.referralCode) {
+      user = global.tempUsers.find(u => u.referral?.code === query.referralCode || u.referralCode === query.referralCode);
     }
     
     if (user) {

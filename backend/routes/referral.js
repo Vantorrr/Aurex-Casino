@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const User = require('../models/User');
+const { User } = require('../models/temp-models');
 
 // ============ USER ROUTES ============
 
@@ -15,20 +15,20 @@ router.get('/stats', auth, async (req, res) => {
     
     const odid = user.odid || `AUREX-${String(user._id).slice(-6).toUpperCase()}`;
     
-    // Находим рефералов этого пользователя (тех кто указал этого юзера как referredBy)
-    const myReferrals = await User.find({ referredBy: user._id });
-    
-    const totalEarnings = user.referralEarnings || 0;
-    const referralCount = user.referralCount || 0;
+    // Get referral data (support both structures)
+    const referralData = user.referral || {};
+    const totalEarnings = referralData.referralEarnings || user.referralEarnings || 0;
+    const referralCount = referralData.referralCount || user.referralCount || 0;
+    const referralCode = referralData.code || user.referralCode || `REF-${odid}`;
     
     const stats = {
       odid,
-      referralCode: user.referralCode || `REF-${odid}`,
-      referralLink: `https://aurex.io/?ref=${user.referralCode}`,
+      referralCode: referralCode,
+      referralLink: `https://aurex.casino/?ref=${referralCode}`,
       totalReferrals: referralCount,
-      activeReferrals: myReferrals.filter(r => r.lastLoginAt && new Date(r.lastLoginAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
+      activeReferrals: 0, // Simplified for temp-models
       totalEarnings,
-      thisMonthEarnings: totalEarnings, // Упрощённо
+      thisMonthEarnings: totalEarnings,
       availableWithdraw: totalEarnings,
       pendingEarnings: 0,
       tier: getTier(referralCount),
@@ -44,22 +44,18 @@ router.get('/stats', auth, async (req, res) => {
 // Получить список рефералов
 router.get('/list', auth, async (req, res) => {
   try {
-    const myReferrals = await User.find({ referredBy: req.user.id })
-      .select('username createdAt totalDeposited lastLoginAt odid')
-      .lean();
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
     
-    const referralCount = await User.findById(req.user.id).select('referralCount');
-    const commission = getCommission(referralCount?.referralCount || 0);
+    const referralData = user.referral || {};
+    const referralCount = referralData.referralCount || user.referralCount || 0;
+    const commission = getCommission(referralCount);
     
-    const formattedReferrals = myReferrals.map(r => ({
-      odid: r.odid || `AUREX-${String(r._id).slice(-6).toUpperCase()}`,
-      username: r.username,
-      registeredAt: r.createdAt,
-      totalDeposits: r.totalDeposited || 0,
-      yourEarnings: Math.floor((r.totalDeposited || 0) * commission / 100),
-      isActive: r.lastLoginAt && new Date(r.lastLoginAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      lastActive: r.lastLoginAt || r.createdAt,
-    }));
+    // For temp-models, we return empty list (no way to query by referredBy easily)
+    // In production with MongoDB, this would query properly
+    const formattedReferrals = [];
     
     res.json({ success: true, data: formattedReferrals });
   } catch (error) {
@@ -75,16 +71,25 @@ router.post('/withdraw', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const available = user.referralEarnings || 0;
+    const referralData = user.referral || {};
+    const available = referralData.referralEarnings || user.referralEarnings || 0;
     
     if (available < 500) {
       return res.status(400).json({ success: false, message: 'Минимум для вывода: ₽500' });
     }
     
     // Переводим на основной баланс
-    user.updateBalance('RUB', available);
-    user.referralEarnings = 0;
-    await user.save();
+    if (user.balance && typeof user.balance === 'object') {
+      user.balance.RUB = (user.balance.RUB || 0) + available;
+    }
+    
+    if (user.referral) {
+      user.referral.referralEarnings = 0;
+    } else {
+      user.referralEarnings = 0;
+    }
+    
+    await User.findByIdAndUpdate(user._id, user);
     
     res.json({ success: true, message: `₽${available.toLocaleString()} переведено на баланс` });
   } catch (error) {

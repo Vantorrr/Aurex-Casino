@@ -435,12 +435,13 @@ router.post('/lava-callback', async (req, res) => {
         console.log(`Deposit completed: ${amount} ${currency} for user ${userId}`);
         
         // Process referral commission if user was referred
-        if (user.referredBy) {
+        const referredBy = user.referredBy || user.referral?.referredBy;
+        if (referredBy) {
           try {
-            const referrer = await User.findById(user.referredBy);
+            const referrer = await User.findById(referredBy);
             if (referrer) {
               // Calculate commission based on referral tier (10-20%)
-              const referralCount = referrer.referralCount || 0;
+              const referralCount = referrer.referralCount || referrer.referral?.referralCount || 0;
               let commissionPercent = 10;
               if (referralCount >= 50) commissionPercent = 20;
               else if (referralCount >= 30) commissionPercent = 18;
@@ -450,9 +451,21 @@ router.post('/lava-callback', async (req, res) => {
               const commission = Math.floor(amount * commissionPercent / 100);
               
               // Add commission to referrer's balance
-              referrer.updateBalance(currency, commission);
-              referrer.referralEarnings = (referrer.referralEarnings || 0) + commission;
-              await referrer.save();
+              if (referrer.balance && typeof referrer.balance === 'object') {
+                referrer.balance[currency] = (referrer.balance[currency] || 0) + commission;
+              }
+              if (referrer.referral) {
+                referrer.referral.referralEarnings = (referrer.referral.referralEarnings || 0) + commission;
+              } else {
+                referrer.referralEarnings = (referrer.referralEarnings || 0) + commission;
+              }
+              
+              // Save referrer
+              if (typeof referrer.save === 'function') {
+                await referrer.save();
+              } else {
+                await User.findByIdAndUpdate(referrer._id, referrer);
+              }
               
               console.log(`Referral commission: ${commission} ${currency} to user ${referrer._id}`);
             }

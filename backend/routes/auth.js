@@ -68,25 +68,38 @@ router.post('/register', [
       referrer = await User.findOne({ referralCode: referralCode });
     }
 
-    // Create new user
-    const user = new User({
+    // Create new user with temp-models compatible structure
+    const userData = {
       username,
       email,
       password,
       firstName,
       lastName,
       ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      referredBy: referrer ? referrer._id : null
-    });
-
-    // Generate referral code
-    user.generateReferralCode();
+      userAgent: req.get('User-Agent')
+    };
+    
+    const user = await User.create(userData);
+    
+    // Set referrer if exists (for temp-models)
+    if (referrer && user.referral) {
+      user.referral.referredBy = referrer._id;
+    } else if (referrer) {
+      user.referredBy = referrer._id;
+    }
     
     // Update referrer stats if exists
     if (referrer) {
-      referrer.referralCount = (referrer.referralCount || 0) + 1;
-      await referrer.save();
+      if (referrer.referral) {
+        referrer.referral.referralCount = (referrer.referral.referralCount || 0) + 1;
+      } else {
+        referrer.referralCount = (referrer.referralCount || 0) + 1;
+      }
+      if (typeof referrer.save === 'function') {
+        await referrer.save();
+      } else {
+        await User.findByIdAndUpdate(referrer._id, referrer);
+      }
     }
 
     // Give welcome bonus
