@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { 
   Users, 
   Copy, 
-  Share2, 
   Gift, 
   TrendingUp, 
   DollarSign,
@@ -15,9 +14,8 @@ import {
   Link as LinkIcon,
   MessageCircle,
   Send,
-  Twitter,
   Award,
-  Percent
+  Twitter
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import AuthGuard from '../components/AuthGuard';
