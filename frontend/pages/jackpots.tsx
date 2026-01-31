@@ -133,7 +133,7 @@ export default function JackpotsPage() {
         <main className="pb-12">
           {/* Hero Section with Background */}
           <section 
-            className="relative overflow-hidden h-[450px] md:h-[550px] flex items-center justify-center pt-20"
+            className="relative overflow-hidden min-h-[550px] md:h-[550px] flex items-center justify-center pt-24 pb-8"
             style={{
               backgroundImage: 'url(/images/jackpots-bg.jpg)',
               backgroundSize: 'cover',
@@ -157,13 +157,13 @@ export default function JackpotsPage() {
                     animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
-                  <div className="relative w-32 h-32 bg-gradient-to-br from-aurex-gold-500 to-aurex-gold-600 rounded-full flex items-center justify-center shadow-2xl">
-                    <Crown className="w-16 h-16 text-aurex-obsidian-900" />
+                  <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-aurex-gold-500 to-aurex-gold-600 rounded-full flex items-center justify-center shadow-2xl">
+                    <Crown className="w-12 h-12 md:w-16 md:h-16 text-aurex-obsidian-900" />
                   </div>
                 </div>
               </motion.div>
 
-              <h1 className="text-5xl md:text-7xl font-black text-white mb-4 drop-shadow-2xl" style={{ fontFamily: 'Cinzel, serif' }}>
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white mb-4 drop-shadow-2xl" style={{ fontFamily: 'Cinzel, serif' }}>
                 {t('jackpots.title')}
               </h1>
               <p className="text-aurex-platinum-200 text-xl md:text-2xl max-w-3xl mx-auto mb-8">
@@ -173,7 +173,7 @@ export default function JackpotsPage() {
               {/* Total Jackpot */}
               <div className="mt-6">
                 <div className="text-aurex-platinum-300 text-sm md:text-base mb-3 uppercase tracking-wider">{t('jackpots.totalPrizePool')}</div>
-                <div className="text-6xl md:text-8xl font-black text-aurex-gold-500 drop-shadow-2xl">
+                <div className="text-4xl sm:text-5xl md:text-8xl font-black text-aurex-gold-500 drop-shadow-2xl">
                   ₽{formatNumber(jackpots.reduce((sum, jp) => sum + jp.amount, 0))}
                 </div>
               </div>
