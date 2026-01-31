@@ -136,6 +136,7 @@ export default function VipPage() {
     personalManager: false,
     exclusiveTournaments: false,
     withdrawalPriority: 'Стандартный',
+    benefits: [],
   };
 
   const currentLevel = vipLevels.find(l => l.level === (user?.vipLevel || 1)) || vipLevels[0] || defaultLevel;
