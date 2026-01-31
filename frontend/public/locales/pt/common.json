@@ -266,6 +266,49 @@
     "forVip": "para VIP",
     "autoAccrual": "Creditado automaticamente"
   },
+  "banners": {
+    "welcome": {
+      "title": "PACOTE DE BOAS-VINDAS",
+      "subtitle": "ATÉ R$140,000 + 250 FS",
+      "description": "200% no primeiro depósito + bônus em 4 depósitos",
+      "buttonText": "Receber bônus",
+      "tag": "QUENTE"
+    },
+    "vip": {
+      "title": "IMPÉRIO VIP",
+      "subtitle": "CASHBACK ATÉ 15%",
+      "description": "Gerente pessoal, saques rápidos, bônus exclusivos",
+      "buttonText": "Saber mais",
+      "tag": "VIP"
+    },
+    "crypto": {
+      "title": "DEPÓSITO CRIPTO",
+      "subtitle": "SEM TAXAS",
+      "description": "Bitcoin, Ethereum, USDT — depósitos e saques instantâneos",
+      "buttonText": "Depositar",
+      "tag": "CRYPTO"
+    },
+    "tournament": {
+      "title": "GOLDEN EMPIRE",
+      "subtitle": "PRÊMIO R$50,000",
+      "description": "Torneio semanal entre top slots. Participe e ganhe!",
+      "buttonText": "Aos torneios",
+      "tag": "AO VIVO"
+    },
+    "drops": {
+      "title": "GOLDEN DROPS",
+      "subtitle": "RODADAS GRÁTIS ALEATÓRIAS",
+      "description": "Receba recompensas inesperadas diretamente no jogo!",
+      "buttonText": "Jogar agora",
+      "tag": "NOVO"
+    },
+    "miniCards": {
+      "firstDeposit": "200% no primeiro depósito",
+      "tournament": "Torneio R$50,000",
+      "vipCashback": "Cashback VIP 15%",
+      "goldenDrops": "Golden Drops"
+    }
+  },
   "common": {
     "loading": "Carregando...",
     "error": "Erro",

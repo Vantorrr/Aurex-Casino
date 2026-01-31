@@ -268,6 +268,49 @@
     "forVip": "für VIP",
     "autoAccrual": "Automatisch gutgeschrieben"
   },
+  "banners": {
+    "welcome": {
+      "title": "WILLKOMMENSPAKET",
+      "subtitle": "BIS ZU €140,000 + 250 FS",
+      "description": "200% auf erste Einzahlung + Boni auf 4 Einzahlungen",
+      "buttonText": "Bonus erhalten",
+      "tag": "HOT"
+    },
+    "vip": {
+      "title": "VIP IMPERIUM",
+      "subtitle": "CASHBACK BIS 15%",
+      "description": "Persönlicher Manager, schnelle Auszahlungen, exklusive Boni",
+      "buttonText": "Mehr erfahren",
+      "tag": "VIP"
+    },
+    "crypto": {
+      "title": "KRYPTO EINZAHLUNG",
+      "subtitle": "KEINE GEBÜHREN",
+      "description": "Bitcoin, Ethereum, USDT — sofortige Einzahlungen und Auszahlungen",
+      "buttonText": "Einzahlen",
+      "tag": "CRYPTO"
+    },
+    "tournament": {
+      "title": "GOLDEN EMPIRE",
+      "subtitle": "PREISPOOL €50,000",
+      "description": "Wöchentliches Turnier unter Top-Slots. Mitmachen und gewinnen!",
+      "buttonText": "Zu Turnieren",
+      "tag": "LIVE"
+    },
+    "drops": {
+      "title": "GOLDEN DROPS",
+      "subtitle": "ZUFÄLLIGE FREISPIELE",
+      "description": "Erhalten Sie unerwartete Belohnungen direkt im Spiel!",
+      "buttonText": "Jetzt spielen",
+      "tag": "NEW"
+    },
+    "miniCards": {
+      "firstDeposit": "200% auf erste Einzahlung",
+      "tournament": "Turnier €50,000",
+      "vipCashback": "VIP Cashback 15%",
+      "goldenDrops": "Golden Drops"
+    }
+  },
   "common": {
     "loading": "Lädt...",
     "error": "Fehler",
