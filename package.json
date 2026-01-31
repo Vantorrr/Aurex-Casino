@@ -1,0 +1,20 @@
+{
+  "name": "vantor-casino",
+  "version": "1.0.0",
+  "description": "Professional Online Casino Platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["casino", "slots", "gambling", "b2b", "gaming"],
+  "author": "Vantor Casino",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
