@@ -135,6 +135,7 @@ export default function SplashScreen({ onComplete, minDuration = 3500 }: SplashS
                   style={{
                     background: 'linear-gradient(90deg, #D4AF37, #F5D77A, #D4AF37)',
                     backgroundSize: '200% 100%',
+                    width: `${progress}%`,
                   }}
                   animate={{ 
                     backgroundPosition: ['0% 0%', '100% 0%', '0% 0%'],
@@ -142,7 +143,6 @@ export default function SplashScreen({ onComplete, minDuration = 3500 }: SplashS
                   transition={{ 
                     backgroundPosition: { duration: 2, repeat: Infinity, ease: 'linear' },
                   }}
-                  style={{ width: `${progress}%` }}
                 />
               </div>
             </motion.div>
