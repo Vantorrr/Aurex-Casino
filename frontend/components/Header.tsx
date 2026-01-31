@@ -132,9 +132,9 @@ export default function Header() {
                 {/* VIP Level - кликабельный */}
                 <Link href="/vip" className="relative group">
                   <div className="absolute inset-0 bg-aurex-gold rounded-lg opacity-20 blur-sm group-hover:opacity-40 transition-opacity"></div>
-                  <div className="relative bg-gradient-to-r from-aurex-gold-600 to-aurex-gold-500 rounded-lg px-3 py-1.5 shadow-aurex-gold group-hover:scale-105 transition-transform">
-                    <div className="flex items-center gap-1.5">
-                      <VIPIcon level={user.vipLevel || 1} className="w-6 h-6" />
+                  <div className="relative bg-gradient-to-r from-aurex-gold-600 to-aurex-gold-500 rounded-lg px-2 py-1 shadow-aurex-gold group-hover:scale-105 transition-transform">
+                    <div className="flex items-center gap-1">
+                      <VIPIcon level={user.vipLevel || 1} className="w-8 h-8" />
                       <span className="text-aurex-obsidian-900 text-xs font-black">VIP {user.vipLevel || 0}</span>
                     </div>
                   </div>
@@ -277,9 +277,9 @@ export default function Header() {
                             </div>
                           </div>
                           {user.vipLevel > 0 && (
-                            <Link href="/vip" className="bg-gradient-to-r from-aurex-gold-600 to-aurex-gold-500 rounded-lg px-3 py-2 shadow-aurex-gold flex items-center gap-2">
-                              <VIPIcon level={user.vipLevel || 1} className="w-7 h-7" />
-                              <span className="text-aurex-obsidian-900 text-sm font-black">VIP {user.vipLevel}</span>
+                            <Link href="/vip" className="bg-gradient-to-r from-aurex-gold-600 to-aurex-gold-500 rounded-lg px-2 py-1.5 shadow-aurex-gold flex items-center gap-1.5">
+                              <VIPIcon level={user.vipLevel || 1} className="w-9 h-9" />
+                              <span className="text-aurex-obsidian-900 text-xs font-black">VIP {user.vipLevel}</span>
                             </Link>
                           )}
                         </div>
