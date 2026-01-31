@@ -387,19 +387,19 @@ export default function TournamentsPage() {
                         >
                           {/* Header with Background Image */}
                           <div 
-                            className={`relative p-6 bg-gradient-to-r ${getTypeGradient(tournament.type)}`}
+                            className="relative p-6 min-h-[200px]"
                             style={{
                               backgroundImage: tournament.type === 'daily' 
                                 ? 'url(/images/tournaments/tournament-daily.jpg)'
                                 : tournament.type === 'weekly'
                                 ? 'url(/images/tournaments/tournament-weekly.jpg)'
-                                : undefined,
+                                : `linear-gradient(135deg, ${tournament.type === 'monthly' ? '#8B5CF6, #7C3AED' : tournament.type === 'special' ? '#F97316, #EF4444' : '#D4AF37, #B8860B'})`,
                               backgroundSize: 'cover',
                               backgroundPosition: 'center',
                             }}
                           >
                             {/* Overlay for readability */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/30"></div>
                             
                             {/* Badges */}
                             <div className="absolute top-4 right-4 flex gap-2 z-10">
