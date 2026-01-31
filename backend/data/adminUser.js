@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Создаем админского пользователя
 const createAdminUser = async () => {

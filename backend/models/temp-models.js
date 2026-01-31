@@ -1,5 +1,5 @@
 // Временные модели для работы без MongoDB
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Заглушка для User модели
 const User = {
