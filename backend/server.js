@@ -154,6 +154,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Root route - API info
+app.get('/', (req, res) => {
+  res.json({
+    name: 'AUREX Casino API',
+    version: '1.0.0',
+    status: 'running',
+    message: 'The Golden Empire of Win 👑',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      games: '/api/slots/games',
+      config: '/api/config'
+    }
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
