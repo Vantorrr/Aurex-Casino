@@ -48,7 +48,7 @@ router.post('/register', [
       });
     }
 
-    const { username, email, password, firstName, lastName } = req.body;
+    const { username, email, password, firstName, lastName, referralCode } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -62,6 +62,12 @@ router.post('/register', [
       });
     }
 
+    // Find referrer if referral code provided
+    let referrer = null;
+    if (referralCode) {
+      referrer = await User.findOne({ referralCode: referralCode });
+    }
+
     // Create new user
     const user = new User({
       username,
@@ -70,11 +76,18 @@ router.post('/register', [
       firstName,
       lastName,
       ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get('User-Agent'),
+      referredBy: referrer ? referrer._id : null
     });
 
     // Generate referral code
     user.generateReferralCode();
+    
+    // Update referrer stats if exists
+    if (referrer) {
+      referrer.referralCount = (referrer.referralCount || 0) + 1;
+      await referrer.save();
+    }
 
     // Give welcome bonus
     user.balance.RUB = 1000; // 1000 RUB welcome bonus

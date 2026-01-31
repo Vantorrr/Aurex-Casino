@@ -433,6 +433,33 @@ router.post('/lava-callback', async (req, res) => {
         await transaction.save();
 
         console.log(`Deposit completed: ${amount} ${currency} for user ${userId}`);
+        
+        // Process referral commission if user was referred
+        if (user.referredBy) {
+          try {
+            const referrer = await User.findById(user.referredBy);
+            if (referrer) {
+              // Calculate commission based on referral tier (10-20%)
+              const referralCount = referrer.referralCount || 0;
+              let commissionPercent = 10;
+              if (referralCount >= 50) commissionPercent = 20;
+              else if (referralCount >= 30) commissionPercent = 18;
+              else if (referralCount >= 15) commissionPercent = 15;
+              else if (referralCount >= 5) commissionPercent = 12;
+              
+              const commission = Math.floor(amount * commissionPercent / 100);
+              
+              // Add commission to referrer's balance
+              referrer.updateBalance(currency, commission);
+              referrer.referralEarnings = (referrer.referralEarnings || 0) + commission;
+              await referrer.save();
+              
+              console.log(`Referral commission: ${commission} ${currency} to user ${referrer._id}`);
+            }
+          } catch (refError) {
+            console.error('Referral commission error:', refError);
+          }
+        }
       }
     } else if (status === 'failed') {
       // Payment failed
