@@ -385,10 +385,24 @@ export default function TournamentsPage() {
                           transition={{ delay: index * 0.1 }}
                           className="group relative bg-aurex-obsidian-800 border border-aurex-gold-500/20 rounded-2xl overflow-hidden hover:border-aurex-gold-500/50 transition-all duration-300"
                         >
-                          {/* Header Gradient */}
-                          <div className={`relative p-6 bg-gradient-to-r ${getTypeGradient(tournament.type)}`}>
+                          {/* Header with Background Image */}
+                          <div 
+                            className={`relative p-6 bg-gradient-to-r ${getTypeGradient(tournament.type)}`}
+                            style={{
+                              backgroundImage: tournament.type === 'daily' 
+                                ? 'url(/images/tournaments/tournament-daily.jpg)'
+                                : tournament.type === 'weekly'
+                                ? 'url(/images/tournaments/tournament-weekly.jpg)'
+                                : undefined,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                            }}
+                          >
+                            {/* Overlay for readability */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent"></div>
+                            
                             {/* Badges */}
-                            <div className="absolute top-4 right-4 flex gap-2">
+                            <div className="absolute top-4 right-4 flex gap-2 z-10">
                               {tournament.isHot && (
                                 <span className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
                                   <Flame className="w-3 h-3" />
@@ -403,9 +417,9 @@ export default function TournamentsPage() {
                               )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                               <div className="flex items-center space-x-4">
-                                <div className="text-5xl">{tournament.gameIcon}</div>
+                                <div className="text-5xl drop-shadow-lg">{tournament.gameIcon}</div>
                                 <div>
                                   <div className="text-xs uppercase tracking-wider opacity-80 mb-1">{getTypeLabel(tournament.type)}</div>
                                   <h3 className="text-xl sm:text-2xl font-black text-white">{tournament.name}</h3>
@@ -429,9 +443,9 @@ export default function TournamentsPage() {
                             </div>
 
                             {/* Prize Pool */}
-                            <div className="mt-6 text-center">
+                            <div className="relative z-10 mt-6 text-center">
                               <div className="text-sm uppercase tracking-wider opacity-80 mb-1">{t('tournaments.prizePool')}</div>
-                              <div className="text-4xl sm:text-5xl font-black text-white drop-shadow-lg">
+                              <div className="text-4xl sm:text-5xl font-black text-white drop-shadow-2xl">
                                 {tournament.currency}{tournament.prizePool.toLocaleString('ru-RU')}
                               </div>
                             </div>
