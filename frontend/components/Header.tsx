@@ -72,7 +72,7 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
         scrolled 
           ? 'bg-dark-200/95 backdrop-blur-md border-b border-gray-800' 
           : 'bg-transparent'
@@ -219,7 +219,7 @@ export default function Header() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="lg:hidden fixed inset-x-0 top-16 bottom-0 bg-aurex-obsidian-900/98 backdrop-blur-xl z-40 overflow-y-auto"
+              className="lg:hidden fixed inset-x-0 top-16 bottom-0 bg-aurex-obsidian-900/98 backdrop-blur-xl z-[9998] overflow-y-auto"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
             >
               <nav className="p-4 space-y-2">
