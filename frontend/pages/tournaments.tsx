@@ -400,52 +400,54 @@ export default function TournamentsPage() {
                           >
                             {/* Overlay for readability */}
                             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/30"></div>
-                            
-                            {/* Badges */}
-                            <div className="absolute top-4 right-4 flex gap-2 z-10">
-                              {tournament.isHot && (
-                                <span className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
-                                  <Flame className="w-3 h-3" />
-                                  <span>HOT</span>
-                                </span>
-                              )}
-                              {tournament.isCrypto && (
-                                <span className="px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">CRYPTO</span>
-                              )}
-                              {tournament.isVip && (
-                                <span className="px-2 py-1 bg-aurex-gold-500 text-aurex-obsidian-900 text-xs font-bold rounded-full">VIP ONLY</span>
-                              )}
-                            </div>
 
-                            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div className="flex items-center space-x-4">
-                                <div className="text-5xl drop-shadow-lg">{tournament.gameIcon}</div>
+                            <div className="relative z-10">
+                              {/* Top row: Title + Badges */}
+                              <div className="flex items-start justify-between mb-4">
                                 <div>
-                                  <div className="text-xs uppercase tracking-wider opacity-80 mb-1">{getTypeLabel(tournament.type)}</div>
-                                  <h3 className="text-xl sm:text-2xl font-black text-white">{tournament.name}</h3>
+                                  <div className="text-xs uppercase tracking-wider text-aurex-gold-400 mb-1">{getTypeLabel(tournament.type)}</div>
+                                  <h3 className="text-2xl sm:text-3xl font-black text-white">{tournament.name}</h3>
+                                </div>
+                                
+                                {/* Badges */}
+                                <div className="flex flex-col gap-2">
+                                  {tournament.isHot && (
+                                    <span className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                                      <Flame className="w-3 h-3" />
+                                      <span>HOT</span>
+                                    </span>
+                                  )}
+                                  {tournament.isCrypto && (
+                                    <span className="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-full text-center">CRYPTO</span>
+                                  )}
+                                  {tournament.isVip && (
+                                    <span className="px-3 py-1.5 bg-aurex-gold-500 text-aurex-obsidian-900 text-xs font-bold rounded-full text-center">VIP</span>
+                                  )}
                                 </div>
                               </div>
 
-                              {/* Timer */}
-                              <div className="flex items-center space-x-2 bg-black/30 px-4 py-2 rounded-xl backdrop-blur-sm">
-                                <Timer className="w-5 h-5 text-white" />
-                                <div className="flex space-x-1 font-mono text-white">
-                                  {timeLeft[tournament.id] && (
-                                    <>
-                                      <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].days)}d</span>
-                                      <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].hours)}h</span>
-                                      <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].minutes)}m</span>
-                                      <span className="bg-white/20 px-2 py-1 rounded animate-pulse">{formatTimeUnit(timeLeft[tournament.id].seconds)}s</span>
-                                    </>
-                                  )}
+                              {/* Timer - on its own row */}
+                              <div className="flex justify-center mb-4">
+                                <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-xl backdrop-blur-sm">
+                                  <Timer className="w-5 h-5 text-aurex-gold-500" />
+                                  <div className="flex space-x-1 font-mono text-white">
+                                    {timeLeft[tournament.id] && (
+                                      <>
+                                        <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].days)}d</span>
+                                        <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].hours)}h</span>
+                                        <span className="bg-white/20 px-2 py-1 rounded">{formatTimeUnit(timeLeft[tournament.id].minutes)}m</span>
+                                        <span className="bg-white/20 px-2 py-1 rounded animate-pulse">{formatTimeUnit(timeLeft[tournament.id].seconds)}s</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
 
                             {/* Prize Pool */}
-                            <div className="relative z-10 mt-6 text-center">
-                              <div className="text-sm uppercase tracking-wider opacity-80 mb-1">{t('tournaments.prizePool')}</div>
-                              <div className="text-4xl sm:text-5xl font-black text-white drop-shadow-2xl">
+                            <div className="relative z-10 text-center">
+                              <div className="text-sm uppercase tracking-wider text-aurex-platinum-300 mb-2">{t('tournaments.prizePool')}</div>
+                              <div className="text-5xl sm:text-6xl font-black text-white drop-shadow-2xl">
                                 {tournament.currency}{tournament.prizePool.toLocaleString('ru-RU')}
                               </div>
                             </div>
