@@ -7,10 +7,6 @@ let tickets = [
   {
     id: 'TKT-001234',
     odid: 'AUREX-000001',
-    odid: 'AUREX-000001',
-    odid: 'AUREX-000001',
-    odid: 'AUREX-000001',
-    odid: 'AUREX-000001',
     userId: '1',
     username: 'testuser',
     email: 'test@example.com',
@@ -27,8 +23,6 @@ let tickets = [
   },
   {
     id: 'TKT-001233',
-    odid: 'AUREX-000002',
-    odid: 'AUREX-000002',
     odid: 'AUREX-000002',
     userId: '2',
     username: 'cryptofan',
@@ -64,8 +58,7 @@ router.post('/', auth, async (req, res) => {
     
     const newTicket = {
       id: `TKT-${String(Date.now()).slice(-6)}`,
-      odid,
-      odid,
+      odid: req.user.odid || `AUREX-${req.user.id}`,
       userId: req.user.id,
       username: req.user.username,
       email: req.user.email,

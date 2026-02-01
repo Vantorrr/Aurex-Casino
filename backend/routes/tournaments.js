@@ -149,8 +149,7 @@ router.post('/:id/join', auth, async (req, res) => {
     
     tournament.participants.push(req.user.id);
     tournament.leaderboard.push({
-      odid,
-      odid,
+      odid: odid,
       userId: req.user.id,
       username: req.user.username,
       points: 0,
@@ -161,7 +160,7 @@ router.post('/:id/join', auth, async (req, res) => {
     
     // Сохраняем участие
     tournamentParticipations.push({
-      odid,
+      odid: odid,
       userId: req.user.id,
       tournamentId: req.params.id,
       joinedAt: new Date().toISOString(),

@@ -92,8 +92,7 @@ router.post('/start', auth, async (req, res) => {
     
     const newVerification = {
       id: `VER-${String(Date.now()).slice(-6)}`,
-      odid,
-      odid,
+      odid: req.user.odid || `AUREX-${String(req.user.id).padStart(6, '0')}`,
       userId: req.user.id,
       username: req.user.username,
       email: req.user.email,

@@ -84,8 +84,7 @@ router.post('/activate', auth, async (req, res) => {
     const odid = req.user.odid || `AUREX-${String(req.user.id).padStart(6, '0')}`;
     promo.usedCount++;
     promocodeUsages.push({
-      odid,
-      odid,
+      odid: odid,
       userId: req.user.id,
       promoId: promo.id,
       code: promo.code,
