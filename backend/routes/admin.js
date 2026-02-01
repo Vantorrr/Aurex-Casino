@@ -112,10 +112,12 @@ router.get('/dashboard', adminAuth, async (req, res) => {
           activeSessions
         },
         finance: {
-          totalDeposits: totalDeposits[0] || { total: 0, count: 0 },
-          todayDeposits: todayDeposits[0] || { total: 0, count: 0 },
-          totalWithdrawals: totalWithdrawals[0] || { total: 0, count: 0 },
-          todayWithdrawals: todayWithdrawals[0] || { total: 0, count: 0 },
+          totalDeposits: totalDeposits[0]?.total || 0,
+          todayDeposits: todayDeposits[0]?.total || 0,
+          totalWithdrawals: totalWithdrawals[0]?.total || 0,
+          todayWithdrawals: todayWithdrawals[0]?.total || 0,
+          pendingWithdrawals: 0,
+          revenue: (totalDeposits[0]?.total || 0) - (totalWithdrawals[0]?.total || 0),
           totalGameRevenue: totalGameRevenue[0]?.revenue || 0,
           todayGameRevenue: todayGameRevenue[0]?.revenue || 0
         },
