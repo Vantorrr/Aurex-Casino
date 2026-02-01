@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const mongoose = require('mongoose');
+// MongoDB removed - using PostgreSQL only
 const socketIo = require('socket.io');
 const http = require('http');
 require('dotenv').config();

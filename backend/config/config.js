@@ -8,9 +8,9 @@ module.exports = {
     frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
   },
 
-  // Database
+  // Database - PostgreSQL only
   database: {
-    mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/aurex-casino',
+    postgresUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/aurex',
     redisUrl: process.env.REDIS_URL || 'redis://localhost:6379'
   },
 
