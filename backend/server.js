@@ -60,46 +60,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Database connection (временно отключено для быстрого запуска)
-console.log('⚠️  MongoDB временно отключен для быстрого запуска');
-console.log('💡 Используется локальное хранилище в памяти');
-
-// Temporary in-memory storage for quick demo
-const { createAdminUser, createTestUser } = require('./data/adminUser');
-
-// Инициализируем пользователей
-const initializeUsers = async () => {
-  const adminUser = await createAdminUser();
-  const testUser = await createTestUser();
-  
-  global.tempUsers = [
-    adminUser,
-    testUser,
-    {
-      _id: 'demo_user',
-      username: 'demo',
-      email: 'demo@aurex.io',
-      password: '$2b$12$/hQWwTrh.Uh3pvIlFbGdqOB9CAHU..s09L16Vmdnyq7sOxETyBaZq', // password: demo123
-      balance: 10000,
-      currency: 'RUB',
-      vipLevel: 1,
-      isVerified: true,
-      isAdmin: false,
-      isActive: true, // ✅ ИСПРАВЛЕНО: добавлен isActive
-      b2b_user_id: 'aurex_demo_001',
-      createdAt: new Date()
-    }
-  ];
-  
-  console.log('👤 Созданы пользователи:');
-  console.log('  🔑 admin / admin123 - Баланс: 100,000₽ (B2B ID: aurex_admin_001)');
-  console.log('  🔑 testuser / test123 - Баланс: 50,000₽ (B2B ID: aurex_user_001)');
-  console.log('  🔑 demo / demo123 - Баланс: 10,000₽ (B2B ID: aurex_demo_001)');
-};
-
-initializeUsers();
-global.tempSessions = [];
-global.tempTransactions = [];
+// Database connection - PostgreSQL
+const pool = require('./config/database');
+console.log('🐘 Using PostgreSQL database for ALL data storage');
+console.log('✅ All user data, transactions, sessions persist in database');
 
 // Socket.io for real-time updates
 io.on('connection', (socket) => {
