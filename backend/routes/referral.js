@@ -24,7 +24,7 @@ router.get('/stats', auth, async (req, res) => {
     const stats = {
       odid,
       referralCode: referralCode,
-      referralLink: `https://aurex.casino/?ref=${referralCode}`,
+      referralLink: `https://aurex.io/?ref=${referralCode}`,
       totalReferrals: referralCount,
       activeReferrals: 0, // Simplified for temp-models
       totalEarnings,
