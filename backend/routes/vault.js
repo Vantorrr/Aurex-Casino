@@ -36,23 +36,50 @@ router.get('/bonuses', auth, async (req, res) => {
   try {
     const { status } = req.query;
     
+    // Get current user VIP level
+    const user = await User.findById(req.user.id);
+    const vipLevel = user?.vipLevel || 0;
+    
     let userBonuses = global.tempVaultBonuses.filter(b => b.userId === req.user.id);
     
-    if (status === 'available') {
-      userBonuses = userBonuses.filter(b => !b.isLocked && b.status === 'active');
-    } else if (status === 'locked') {
-      userBonuses = userBonuses.filter(b => b.isLocked);
-    } else if (status === 'used') {
-      userBonuses = userBonuses.filter(b => b.status === 'used');
-    }
-
     // If no bonuses, create some default ones for the user
-    if (userBonuses.length === 0 && !status) {
-      const user = await User.findById(req.user.id);
-      const vipLevel = user?.vipLevel || 0;
+    if (userBonuses.length === 0) {
       const defaultBonuses = createDefaultBonuses(req.user.id, vipLevel);
       global.tempVaultBonuses.push(...defaultBonuses);
       userBonuses = defaultBonuses;
+    } else {
+      // Update VIP bonus lock status based on current VIP level
+      const isVipUnlocked = vipLevel >= 3;
+      userBonuses = userBonuses.map(b => {
+        if (b.type === 'vip') {
+          return {
+            ...b,
+            isLocked: !isVipUnlocked,
+            unlockCondition: isVipUnlocked ? undefined : 'Достигните VIP уровня Gold (3+)'
+          };
+        }
+        return b;
+      });
+      // Update in global storage too
+      global.tempVaultBonuses = global.tempVaultBonuses.map(b => {
+        if (b.userId === req.user.id && b.type === 'vip') {
+          return {
+            ...b,
+            isLocked: !isVipUnlocked,
+            unlockCondition: isVipUnlocked ? undefined : 'Достигните VIP уровня Gold (3+)'
+          };
+        }
+        return b;
+      });
+    }
+    
+    // Filter by status if requested
+    if (status === 'available') {
+      userBonuses = userBonuses.filter(b => !b.isLocked && b.status !== 'used' && b.status !== 'activated');
+    } else if (status === 'locked') {
+      userBonuses = userBonuses.filter(b => b.isLocked);
+    } else if (status === 'used') {
+      userBonuses = userBonuses.filter(b => b.status === 'used' || b.status === 'activated');
     }
 
     res.json({
