@@ -82,14 +82,14 @@ router.post('/activate/:bonusId', auth, async (req, res) => {
       return res.status(400).json({ success: false, error: bonus.unlockCondition || 'Бонус заблокирован' });
     }
 
-    if (bonus.status === 'used') {
-      return res.status(400).json({ success: false, error: 'Бонус уже использован' });
+    if (bonus.status === 'used' || bonus.status === 'activated') {
+      return res.status(400).json({ success: false, error: 'Бонус уже активирован' });
     }
 
-    // Activate the bonus
+    // Activate the bonus and mark as used
     global.tempVaultBonuses[bonusIndex] = {
       ...bonus,
-      status: 'activated',
+      status: 'used',
       activatedAt: new Date().toISOString()
     };
 

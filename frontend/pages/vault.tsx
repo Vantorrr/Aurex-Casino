@@ -15,7 +15,8 @@ import {
   Star,
   ChevronRight,
   Check,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -109,8 +110,9 @@ export default function VaultPage() {
     setIsLoading(false);
   };
 
-  const availableBonuses = bonuses.filter(b => !b.isLocked);
-  const lockedBonuses = bonuses.filter(b => b.isLocked);
+  const availableBonuses = bonuses.filter(b => !b.isLocked && b.status !== 'used' && b.status !== 'activated');
+  const lockedBonuses = bonuses.filter(b => b.isLocked && b.status !== 'used' && b.status !== 'activated');
+  const usedBonuses = bonuses.filter(b => b.status === 'used' || b.status === 'activated');
 
   const handleActivateBonus = async (bonus: VaultBonus) => {
     setIsActivating(true);
@@ -396,7 +398,37 @@ export default function VaultPage() {
                     </motion.div>
                   ))}
 
-                  {activeTab === 'history' && (
+                  {activeTab === 'history' && usedBonuses.length > 0 && usedBonuses.map((bonus, index) => (
+                    <motion.div
+                      key={bonus.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="aurex-card overflow-hidden opacity-60"
+                    >
+                      <div className={`h-2 bg-gradient-to-r ${bonus.gradient || 'from-gray-500 to-gray-600'}`}></div>
+                      <div className="p-5">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-xl bg-aurex-obsidian-700 flex items-center justify-center text-2xl">
+                            {bonus.icon || '🎁'}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-white">{bonus.name}</h3>
+                            <p className="text-sm text-aurex-platinum-500">{bonus.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-2xl font-black text-aurex-gold-500">{bonus.value}</div>
+                          <div className="flex items-center gap-2 text-sm text-green-500">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Использован</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {activeTab === 'history' && usedBonuses.length === 0 && (
                     <div className="col-span-full">
                       <div className="aurex-card p-8 text-center">
                         <Clock className="w-16 h-16 text-aurex-platinum-600 mx-auto mb-4" />
