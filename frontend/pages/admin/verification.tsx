@@ -348,7 +348,22 @@ export default function AdminVerificationPage() {
                   <div className="bg-aurex-obsidian-900 rounded-xl p-8 text-center mb-6">
                     <FileText className="w-16 h-16 mx-auto mb-4 text-aurex-platinum-600" />
                     <div className="text-white font-medium mb-2">{selectedRequest.documentName}</div>
-                    <button className="flex items-center space-x-2 mx-auto px-4 py-2 bg-aurex-gold-500 text-aurex-obsidian-900 font-bold rounded-lg">
+                    <button 
+                      onClick={() => {
+                        if (selectedRequest.fileUrl) {
+                          const link = document.createElement('a');
+                          link.href = selectedRequest.fileUrl;
+                          link.download = selectedRequest.documentName || 'document';
+                          link.target = '_blank';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        } else {
+                          toast.error('Файл документа недоступен (тестовые данные)');
+                        }
+                      }}
+                      className="flex items-center space-x-2 mx-auto px-4 py-2 bg-aurex-gold-500 text-aurex-obsidian-900 font-bold rounded-lg hover:bg-aurex-gold-400 transition-colors"
+                    >
                       <Download className="w-4 h-4" />
                       <span>Скачать</span>
                     </button>
