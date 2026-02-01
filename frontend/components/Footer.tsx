@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Crown, Mail, Phone, Shield, Bitcoin, Zap } from 'lucide-react';
+import { Crown, Mail, Phone, Shield, Bitcoin, Zap, Send, Instagram, Twitter, MessageSquare } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 
 export default function Footer() {
@@ -35,10 +35,10 @@ export default function Footer() {
   };
 
   const socialLinks = [
-    { href: 'https://t.me/aurexcasino', label: 'Telegram', icon: '📱' },
-    { href: 'https://instagram.com/aurexcasino', label: 'Instagram', icon: '📷' },
-    { href: 'https://twitter.com/aurexcasino', label: 'Twitter (X)', icon: '𝕏' },
-    { href: 'https://discord.gg/aurexcasino', label: 'Discord', icon: '💬' },
+    { href: 'https://t.me/aurexcasino', label: 'Telegram', Icon: Send },
+    { href: 'https://instagram.com/aurexcasino', label: 'Instagram', Icon: Instagram },
+    { href: 'https://twitter.com/aurexcasino', label: 'Twitter (X)', Icon: Twitter },
+    { href: 'https://discord.gg/aurexcasino', label: 'Discord', Icon: MessageSquare },
   ];
 
   const cryptoMethods = [
@@ -90,9 +90,7 @@ export default function Footer() {
                   aria-label={social.label}
                   title={social.label}
                 >
-                  <span className="text-aurex-gold-500 group-hover:text-aurex-gold-400 text-lg">
-                    {social.icon}
-                  </span>
+                  <social.Icon className="w-5 h-5 text-aurex-gold-500 group-hover:text-aurex-gold-400" />
                 </a>
               ))}
             </div>
