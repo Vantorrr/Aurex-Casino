@@ -1,179 +1,178 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { User, GameSession, Transaction } = require('../models/temp-models');
+const pool = require('../config/database');
 const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // Dashboard statistics
 router.get('/dashboard', adminAuth, async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
     // User statistics
-    const totalUsers = await User.countDocuments();
-    const todayUsers = await User.countDocuments({ createdAt: { $gte: today } });
-    const activeUsers = await User.countDocuments({ 
-      lastLogin: { $gte: yesterday },
-      isActive: true 
-    });
+    const usersResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as today,
+        COUNT(*) FILTER (WHERE last_login >= CURRENT_DATE - INTERVAL '1 day' AND is_active = true) as active
+      FROM users
+    `);
 
-    // Game statistics
-    const totalSessions = await GameSession.countDocuments();
-    const todaySessions = await GameSession.countDocuments({ createdAt: { $gte: today } });
-    const activeSessions = await GameSession.countDocuments({ status: 'active' });
+    // Game sessions statistics
+    const gamesResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total_sessions,
+        COUNT(*) FILTER (WHERE started_at >= CURRENT_DATE) as today_sessions,
+        COUNT(*) FILTER (WHERE status = 'active') as active_sessions
+      FROM game_sessions
+    `);
 
     // Financial statistics
-    const totalDeposits = await Transaction.aggregate([
-      { $match: { type: 'deposit', status: 'completed' } },
-      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
-    ]);
+    const financeResult = await pool.query(`
+      SELECT 
+        COALESCE(SUM(amount) FILTER (WHERE type = 'deposit' AND status = 'completed'), 0) as total_deposits,
+        COALESCE(SUM(amount) FILTER (WHERE type = 'deposit' AND status = 'completed' AND created_at >= CURRENT_DATE), 0) as today_deposits,
+        COALESCE(SUM(ABS(amount)) FILTER (WHERE type = 'withdrawal' AND status = 'completed'), 0) as total_withdrawals,
+        COALESCE(SUM(ABS(amount)) FILTER (WHERE type = 'withdrawal' AND status = 'completed' AND created_at >= CURRENT_DATE), 0) as today_withdrawals,
+        COALESCE(SUM(ABS(amount)) FILTER (WHERE type = 'withdrawal' AND status = 'pending'), 0) as pending_withdrawals
+      FROM transactions
+    `);
 
-    const todayDeposits = await Transaction.aggregate([
-      { $match: { type: 'deposit', status: 'completed', createdAt: { $gte: today } } },
-      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
-    ]);
-
-    const totalWithdrawals = await Transaction.aggregate([
-      { $match: { type: 'withdrawal', status: 'completed' } },
-      { $group: { _id: null, total: { $sum: { $abs: '$amount' } }, count: { $sum: 1 } } }
-    ]);
-
-    const todayWithdrawals = await Transaction.aggregate([
-      { $match: { type: 'withdrawal', status: 'completed', createdAt: { $gte: today } } },
-      { $group: { _id: null, total: { $sum: { $abs: '$amount' } }, count: { $sum: 1 } } }
-    ]);
-
-    // Game revenue (bets - wins)
-    const totalGameRevenue = await GameSession.aggregate([
-      { $group: { _id: null, revenue: { $sum: { $subtract: ['$totalBet', '$totalWin'] } } } }
-    ]);
-
-    const todayGameRevenue = await GameSession.aggregate([
-      { $match: { createdAt: { $gte: today } } },
-      { $group: { _id: null, revenue: { $sum: { $subtract: ['$totalBet', '$totalWin'] } } } }
-    ]);
+    // Game revenue
+    const revenueResult = await pool.query(`
+      SELECT 
+        COALESCE(SUM(bet_amount - win_amount), 0) as total_revenue,
+        COALESCE(SUM(bet_amount - win_amount) FILTER (WHERE started_at >= CURRENT_DATE), 0) as today_revenue
+      FROM game_sessions
+    `);
 
     // Top games
-    const topGames = await GameSession.aggregate([
-      { $match: { createdAt: { $gte: thisMonth } } },
-      {
-        $group: {
-          _id: '$gameCode',
-          gameName: { $first: '$gameName' },
-          sessions: { $sum: 1 },
-          revenue: { $sum: { $subtract: ['$totalBet', '$totalWin'] } },
-          totalBet: { $sum: '$totalBet' },
-          totalWin: { $sum: '$totalWin' }
-        }
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 10 }
-    ]);
+    const topGamesResult = await pool.query(`
+      SELECT 
+        game_id,
+        game_name,
+        provider,
+        COUNT(*) as sessions,
+        COALESCE(SUM(bet_amount - win_amount), 0) as revenue,
+        COALESCE(SUM(bet_amount), 0) as total_bet,
+        COALESCE(SUM(win_amount), 0) as total_win
+      FROM game_sessions
+      WHERE started_at >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY game_id, game_name, provider
+      ORDER BY revenue DESC
+      LIMIT 10
+    `);
 
-    // Daily revenue chart data (last 30 days)
-    const revenueChart = await Transaction.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-          type: { $in: ['deposit', 'withdrawal'] },
-          status: 'completed'
-        }
-      },
-      {
-        $group: {
-          _id: {
-            date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            type: '$type'
-          },
-          amount: { $sum: '$amount' }
-        }
-      },
-      { $sort: { '_id.date': 1 } }
-    ]);
+    const users = usersResult.rows[0];
+    const games = gamesResult.rows[0];
+    const finance = financeResult.rows[0];
+    const revenue = revenueResult.rows[0];
 
     res.json({
       success: true,
       data: {
         users: {
-          total: totalUsers,
-          today: todayUsers,
-          active: activeUsers
+          total: parseInt(users.total),
+          today: parseInt(users.today),
+          active: parseInt(users.active)
         },
         games: {
-          totalSessions,
-          todaySessions,
-          activeSessions
+          totalSessions: parseInt(games.total_sessions),
+          todaySessions: parseInt(games.today_sessions),
+          activeSessions: parseInt(games.active_sessions)
         },
         finance: {
-          totalDeposits: totalDeposits[0]?.total || 0,
-          todayDeposits: todayDeposits[0]?.total || 0,
-          totalWithdrawals: totalWithdrawals[0]?.total || 0,
-          todayWithdrawals: todayWithdrawals[0]?.total || 0,
-          pendingWithdrawals: 0,
-          revenue: (totalDeposits[0]?.total || 0) - (totalWithdrawals[0]?.total || 0),
-          totalGameRevenue: totalGameRevenue[0]?.revenue || 0,
-          todayGameRevenue: todayGameRevenue[0]?.revenue || 0
+          totalDeposits: parseFloat(finance.total_deposits),
+          todayDeposits: parseFloat(finance.today_deposits),
+          totalWithdrawals: parseFloat(finance.total_withdrawals),
+          todayWithdrawals: parseFloat(finance.today_withdrawals),
+          pendingWithdrawals: parseFloat(finance.pending_withdrawals),
+          revenue: parseFloat(finance.total_deposits) - parseFloat(finance.total_withdrawals),
+          totalGameRevenue: parseFloat(revenue.total_revenue),
+          todayGameRevenue: parseFloat(revenue.today_revenue)
         },
-        topGames,
-        revenueChart
+        topGames: topGamesResult.rows.map(g => ({
+          gameId: g.game_id,
+          gameName: g.game_name,
+          provider: g.provider,
+          sessions: parseInt(g.sessions),
+          revenue: parseFloat(g.revenue),
+          totalBet: parseFloat(g.total_bet),
+          totalWin: parseFloat(g.total_win)
+        }))
       }
     });
   } catch (error) {
     console.error('Get admin dashboard error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get dashboard data'
-    });
+    res.status(500).json({ success: false, error: 'Failed to get dashboard data' });
   }
 });
 
 // Get all users with pagination and filters
 router.get('/users', adminAuth, async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search, 
-      status, 
-      role,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
-
-    const query = {};
+    const { page = 1, limit = 20, search, status, role, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    let query = 'SELECT * FROM users';
+    const conditions = [];
+    const values = [];
     
     if (search) {
-      query.$or = [
-        { username: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
+      values.push(`%${search}%`);
+      conditions.push(`(username ILIKE $${values.length} OR email ILIKE $${values.length} OR odid ILIKE $${values.length})`);
     }
-
-    if (status) {
-      query.isActive = status === 'active';
+    
+    if (status === 'active') {
+      conditions.push('is_active = true');
+    } else if (status === 'inactive') {
+      conditions.push('is_active = false');
     }
-
-    if (role) {
-      query.role = role;
+    
+    if (role === 'admin') {
+      conditions.push('is_admin = true');
+    } else if (role === 'user') {
+      conditions.push('is_admin = false');
     }
-
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-    const users = await User.find(query)
-      .select('-password')
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await User.countDocuments(query);
-
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    // Sort
+    const validSortColumns = ['created_at', 'last_login', 'balance', 'vip_level', 'username'];
+    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
+    const sortDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
+    query += ` ORDER BY ${sortColumn} ${sortDir}`;
+    
+    // Pagination
+    query += ` LIMIT ${parseInt(limit)} OFFSET ${offset}`;
+    
+    const result = await pool.query(query, values);
+    
+    // Count total
+    let countQuery = 'SELECT COUNT(*) FROM users';
+    if (conditions.length > 0) {
+      countQuery += ' WHERE ' + conditions.join(' AND ');
+    }
+    const countResult = await pool.query(countQuery, values);
+    
+    const users = result.rows.map(u => ({
+      id: u.id,
+      odid: u.odid,
+      username: u.username,
+      email: u.email,
+      balance: parseFloat(u.balance),
+      bonusBalance: parseFloat(u.bonus_balance),
+      vipLevel: u.vip_level,
+      vipPoints: u.vip_points,
+      isVerified: u.is_verified,
+      isAdmin: u.is_admin,
+      isActive: u.is_active,
+      referralCode: u.referral_code,
+      depositCount: u.deposit_count,
+      lastLogin: u.last_login,
+      createdAt: u.created_at
+    }));
+    
     res.json({
       success: true,
       data: {
@@ -181,218 +180,120 @@ router.get('/users', adminAuth, async (req, res) => {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
+          total: parseInt(countResult.rows[0].count),
+          pages: Math.ceil(parseInt(countResult.rows[0].count) / parseInt(limit))
         }
       }
     });
   } catch (error) {
-    console.error('Get admin users error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get users'
-    });
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get users' });
   }
 });
 
-// Get user details with statistics
-router.get('/users/:userId', adminAuth, async (req, res) => {
+// Get user by ID or ODID
+router.get('/users/:identifier', adminAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId)
-      .select('-password')
-      .populate('referredBy', 'username email');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+    const { identifier } = req.params;
+    
+    let result;
+    if (identifier.startsWith('AUREX-')) {
+      result = await pool.query('SELECT * FROM users WHERE odid = $1', [identifier]);
+    } else {
+      result = await pool.query('SELECT * FROM users WHERE id = $1', [identifier]);
     }
-
-    // Get user's game statistics
-    const gameStats = await GameSession.aggregate([
-      { $match: { user: user._id } },
-      {
-        $group: {
-          _id: null,
-          totalSessions: { $sum: 1 },
-          totalBet: { $sum: '$totalBet' },
-          totalWin: { $sum: '$totalWin' },
-          totalSpins: { $sum: '$spinsCount' }
-        }
-      }
-    ]);
-
-    // Get user's payment statistics
-    const paymentStats = await Transaction.aggregate([
-      { $match: { user: user._id, type: { $in: ['deposit', 'withdrawal'] }, status: 'completed' } },
-      {
-        $group: {
-          _id: '$type',
-          total: { $sum: '$amount' },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    // Get recent transactions
-    const recentTransactions = await Transaction.find({ user: user._id })
-      .sort({ createdAt: -1 })
-      .limit(20);
-
-    // Get referral count
-    const referralCount = await User.countDocuments({ referredBy: user._id });
-
-    const deposits = paymentStats.find(p => p._id === 'deposit') || { total: 0, count: 0 };
-    const withdrawals = paymentStats.find(p => p._id === 'withdrawal') || { total: 0, count: 0 };
-
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const u = result.rows[0];
     res.json({
       success: true,
       data: {
-        user,
-        stats: {
-          games: gameStats[0] || { totalSessions: 0, totalBet: 0, totalWin: 0, totalSpins: 0 },
-          payments: {
-            totalDeposited: deposits.total,
-            depositCount: deposits.count,
-            totalWithdrawn: Math.abs(withdrawals.total),
-            withdrawalCount: withdrawals.count
-          },
-          referralCount
-        },
-        recentTransactions
+        id: u.id,
+        odid: u.odid,
+        username: u.username,
+        email: u.email,
+        balance: parseFloat(u.balance),
+        bonusBalance: parseFloat(u.bonus_balance),
+        vipLevel: u.vip_level,
+        vipPoints: u.vip_points,
+        isVerified: u.is_verified,
+        isAdmin: u.is_admin,
+        isActive: u.is_active,
+        referralCode: u.referral_code,
+        referredBy: u.referred_by,
+        depositCount: u.deposit_count,
+        lastLogin: u.last_login,
+        createdAt: u.created_at
       }
     });
   } catch (error) {
-    console.error('Get admin user details error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get user details'
-    });
+    console.error('Get user error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get user' });
   }
 });
 
 // Update user
-router.put('/users/:userId', adminAuth, [
-  body('isActive').optional().isBoolean(),
-  body('role').optional().isIn(['user', 'admin', 'moderator']),
-  body('vipLevel').optional().isInt({ min: 0, max: 10 }),
-  body('balance.RUB').optional().isFloat({ min: 0 }),
-  body('bonusBalance').optional().isFloat({ min: 0 })
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      });
-    }
-
-    const updates = req.body;
-    const user = await User.findById(req.params.userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    // Update allowed fields
-    if (updates.isActive !== undefined) user.isActive = updates.isActive;
-    if (updates.role !== undefined) user.role = updates.role;
-    if (updates.vipLevel !== undefined) user.vipLevel = updates.vipLevel;
-    if (updates.bonusBalance !== undefined) user.bonusBalance = updates.bonusBalance;
-    
-    if (updates.balance) {
-      Object.keys(updates.balance).forEach(currency => {
-        if (user.balance[currency] !== undefined) {
-          user.balance[currency] = updates.balance[currency];
-        }
-      });
-    }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: 'User updated successfully',
-      data: { user }
-    });
-  } catch (error) {
-    console.error('Update user error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update user'
-    });
-  }
-});
-
-// Find user by ODID or ID
-router.get('/users/find/:identifier', adminAuth, async (req, res) => {
+router.put('/users/:identifier', adminAuth, async (req, res) => {
   try {
     const { identifier } = req.params;
-    let user = null;
+    const { isActive, isAdmin, vipLevel, balance, bonusBalance } = req.body;
     
-    // Try to find by ODID first
-    user = await User.findOne({ odid: identifier });
-    
-    // If not found, try by username
-    if (!user) {
-      user = await User.findOne({ username: identifier });
-    }
-    
-    // If not found, try by email
-    if (!user) {
-      user = await User.findOne({ email: identifier });
-    }
-    
-    // If not found, try by ID
-    if (!user) {
-      const userById = await User.findById(identifier);
-      if (userById) {
-        const result = await userById.select('-password');
-        user = result;
+    let userId;
+    if (identifier.startsWith('AUREX-')) {
+      const result = await pool.query('SELECT id FROM users WHERE odid = $1', [identifier]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
+      userId = result.rows[0].id;
+    } else {
+      userId = identifier;
     }
     
-    // If still not found, try partial match
-    if (!user) {
-      const allUsersQuery = User.find({});
-      const allUsers = await allUsersQuery.select('-password');
-      user = allUsers.find(u => 
-        u.odid?.includes(identifier) || 
-        u._id?.toString().includes(identifier) ||
-        u.username?.toLowerCase().includes(identifier.toLowerCase())
-      );
+    const updates = [];
+    const values = [];
+    
+    if (isActive !== undefined) {
+      values.push(isActive);
+      updates.push(`is_active = $${values.length}`);
     }
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'Пользователь не найден'
-      });
+    if (isAdmin !== undefined) {
+      values.push(isAdmin);
+      updates.push(`is_admin = $${values.length}`);
     }
-
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
-
-    res.json({
-      success: true,
-      data: userWithoutPassword
-    });
+    if (vipLevel !== undefined) {
+      values.push(vipLevel);
+      updates.push(`vip_level = $${values.length}`);
+    }
+    if (balance !== undefined) {
+      values.push(balance);
+      updates.push(`balance = $${values.length}`);
+    }
+    if (bonusBalance !== undefined) {
+      values.push(bonusBalance);
+      updates.push(`bonus_balance = $${values.length}`);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'No updates provided' });
+    }
+    
+    values.push(userId);
+    const result = await pool.query(
+      `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${values.length} RETURNING *`,
+      values
+    );
+    
+    res.json({ success: true, message: 'User updated', data: result.rows[0] });
   } catch (error) {
-    console.error('Find user error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to find user'
-    });
+    console.error('Update user error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update user' });
   }
 });
 
-// Add/remove balance by user ID or ODID
+// Add/remove balance
 router.post('/users/:identifier/balance', adminAuth, [
   body('amount').isFloat({ min: -1000000000, max: 1000000000 }),
   body('type').isIn(['add', 'subtract', 'set']),
@@ -402,359 +303,231 @@ router.post('/users/:identifier/balance', adminAuth, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      });
+      return res.status(400).json({ success: false, error: 'Validation failed', details: errors.array() });
     }
-
+    
     const { identifier } = req.params;
     const { amount, type, balanceType = 'balance', reason } = req.body;
-
-    // Find user by ID, ODID, or username
-    let user = await User.findOne({ odid: identifier });
-    if (!user) {
-      user = await User.findOne({ username: identifier });
+    
+    let userId;
+    if (identifier.startsWith('AUREX-')) {
+      const result = await pool.query('SELECT id FROM users WHERE odid = $1', [identifier]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+      userId = result.rows[0].id;
+    } else {
+      userId = identifier;
     }
-    if (!user) {
-      const userByIdQuery = User.findById(identifier);
-      user = await userByIdQuery.select('-password');
-    }
-    if (!user) {
-      // Try partial match
-      const allUsersQuery = User.find({});
-      const allUsers = await allUsersQuery.select('-password');
-      user = allUsers.find(u => 
-        u.odid?.includes(identifier) || 
-        u._id?.toString().includes(identifier) ||
-        u.username?.toLowerCase().includes(identifier.toLowerCase())
+    
+    const column = balanceType === 'bonusBalance' ? 'bonus_balance' : 'balance';
+    
+    let result;
+    if (type === 'set') {
+      result = await pool.query(
+        `UPDATE users SET ${column} = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+        [amount, userId]
+      );
+    } else if (type === 'add') {
+      result = await pool.query(
+        `UPDATE users SET ${column} = ${column} + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+        [amount, userId]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE users SET ${column} = GREATEST(0, ${column} - $1), updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+        [amount, userId]
       );
     }
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'Пользователь не найден'
-      });
-    }
-
-    const oldBalance = balanceType === 'bonusBalance' ? (user.bonusBalance || 0) : (user.balance || 0);
-    let newBalance = oldBalance;
-
-    if (type === 'add') {
-      newBalance = oldBalance + amount;
-    } else if (type === 'subtract') {
-      newBalance = Math.max(0, oldBalance - amount);
-    } else if (type === 'set') {
-      newBalance = Math.max(0, amount);
-    }
-
-    if (balanceType === 'bonusBalance') {
-      user.bonusBalance = newBalance;
-    } else {
-      user.balance = newBalance;
-    }
-
-    await user.save();
-
-    // Log the transaction
-    const transaction = {
-      id: `ADMIN-${Date.now()}`,
-      odid: `AUREX-TRX-${String(global.tempTransactions?.length + 1 || 1).padStart(6, '0')}`,
-      user: user._id,
-      type: type === 'subtract' ? 'admin_debit' : 'admin_credit',
-      amount: type === 'subtract' ? -amount : amount,
-      status: 'completed',
-      method: 'admin',
-      description: reason || `Ручное ${type === 'add' ? 'пополнение' : type === 'subtract' ? 'списание' : 'установка'} баланса`,
-      processedBy: req.user.id,
-      createdAt: new Date().toISOString()
-    };
     
-    if (global.tempTransactions) {
-      global.tempTransactions.push(transaction);
-    }
-
+    // Log transaction
+    const transactionType = type === 'add' ? 'admin_credit' : (type === 'subtract' ? 'admin_debit' : 'admin_set');
+    await pool.query(
+      `INSERT INTO transactions (user_id, type, amount, status, description)
+       VALUES ($1, $2, $3, 'completed', $4)`,
+      [userId, transactionType, type === 'subtract' ? -amount : amount, reason || 'Admin balance adjustment']
+    );
+    
     res.json({
       success: true,
-      message: `Баланс ${type === 'add' ? 'пополнен' : type === 'subtract' ? 'списан' : 'установлен'} успешно`,
+      message: 'Balance updated',
       data: {
-        user: {
-          id: user._id,
-          odid: user.odid,
-          username: user.username,
-          email: user.email
-        },
-        oldBalance,
-        newBalance,
-        change: newBalance - oldBalance,
+        newBalance: parseFloat(result.rows[0][column]),
         balanceType,
-        transaction
+        amount,
+        type
       }
     });
   } catch (error) {
-    console.error('Add balance error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update balance'
-    });
+    console.error('Update balance error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update balance' });
   }
 });
 
-// Get all transactions
+// Get transactions
 router.get('/transactions', adminAuth, async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 50, 
-      type, 
-      status,
-      userId,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
-
-    const query = {};
+    const { page = 1, limit = 50, type, status, userId } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    if (type) query.type = type;
-    if (status) query.status = status;
-    if (userId) query.user = userId;
-
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-    const transactions = await Transaction.find(query)
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('user', 'username email')
-      .populate('gameSession', 'sessionId gameName');
-
-    const total = await Transaction.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: {
-        transactions,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get admin transactions error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get transactions'
-    });
-  }
-});
-
-// Get all game sessions
-router.get('/sessions', adminAuth, async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 50, 
-      status,
-      gameCode,
-      userId,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
-
-    const query = {};
+    let query = `
+      SELECT t.*, u.username, u.odid, u.email
+      FROM transactions t
+      JOIN users u ON t.user_id = u.id
+    `;
+    const conditions = [];
+    const values = [];
     
-    if (status) query.status = status;
-    if (gameCode) query.gameCode = gameCode;
-    if (userId) query.user = userId;
-
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-    const sessions = await GameSession.find(query)
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('user', 'username email');
-
-    const total = await GameSession.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: {
-        sessions,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get admin sessions error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get game sessions'
-    });
-  }
-});
-
-// Add bonus to user
-router.post('/users/:userId/bonus', adminAuth, [
-  body('amount').isFloat({ min: 1 }).withMessage('Amount must be greater than 0'),
-  body('currency').isIn(['RUB', 'USD', 'EUR']).withMessage('Invalid currency'),
-  body('description').isLength({ min: 1, max: 255 }).withMessage('Description is required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      });
-    }
-
-    const { amount, currency, description } = req.body;
-    const userId = req.params.userId;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    // Create bonus transaction
-    const transaction = new Transaction({
-      user: userId,
-      transactionId: Transaction.generateTransactionId(),
-      type: 'bonus',
-      amount: amount,
-      currency: currency,
-      balanceBefore: user.bonusBalance,
-      balanceAfter: user.bonusBalance + amount,
-      description: description,
-      status: 'completed'
-    });
-
-    // Update user balance
-    user.bonusBalance += amount;
-
-    await Promise.all([transaction.save(), user.save()]);
-
-    res.json({
-      success: true,
-      message: 'Bonus added successfully',
-      data: {
-        transaction,
-        newBonusBalance: user.bonusBalance
-      }
-    });
-  } catch (error) {
-    console.error('Add bonus error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to add bonus'
-    });
-  }
-});
-
-// System settings
-const Settings = require('../models/Settings');
-
-// Get all settings
-router.get('/settings', adminAuth, async (req, res) => {
-  try {
-    const settings = await Settings.get();
-    res.json({
-      success: true,
-      data: settings
-    });
-  } catch (error) {
-    console.error('Get admin settings error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get settings'
-    });
-  }
-});
-
-// Update settings section
-router.put('/settings/:section', adminAuth, async (req, res) => {
-  try {
-    const { section } = req.params;
-    const validSections = ['general', 'bonuses', 'payments', 'vip', 'security'];
-    
-    if (!validSections.includes(section)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid settings section'
-      });
+    if (type && type !== 'all') {
+      values.push(type);
+      conditions.push(`t.type = $${values.length}`);
     }
     
-    const settings = await Settings.updateSection(section, req.body);
+    if (status && status !== 'all') {
+      values.push(status);
+      conditions.push(`t.status = $${values.length}`);
+    }
     
-    console.log(`Admin ${req.user.username} updated ${section} settings`);
+    if (userId) {
+      values.push(userId);
+      conditions.push(`t.user_id = $${values.length}`);
+    }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ` ORDER BY t.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
+    
+    const result = await pool.query(query, values);
     
     res.json({
       success: true,
-      message: `${section} settings updated`,
-      data: settings
+      data: result.rows.map(t => ({
+        id: t.id,
+        odid: t.odid,
+        username: t.username,
+        email: t.email,
+        type: t.type,
+        amount: parseFloat(t.amount),
+        currency: t.currency,
+        status: t.status,
+        paymentMethod: t.payment_method,
+        description: t.description,
+        createdAt: t.created_at
+      }))
     });
   } catch (error) {
-    console.error('Update settings error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update settings'
-    });
+    console.error('Get transactions error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get transactions' });
   }
 });
 
-// Update all settings at once
-router.put('/settings', adminAuth, async (req, res) => {
+// Approve/reject transaction
+router.post('/transactions/:id/:action', adminAuth, async (req, res) => {
   try {
-    const settings = await Settings.updateAll(req.body);
+    const { id, action } = req.params;
     
-    console.log(`Admin ${req.user.username} updated all settings`);
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, error: 'Invalid action' });
+    }
     
-    res.json({
-      success: true,
-      message: 'All settings updated',
-      data: settings
-    });
+    const newStatus = action === 'approve' ? 'completed' : 'failed';
+    
+    const result = await pool.query(
+      'UPDATE transactions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [newStatus, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+    
+    const transaction = result.rows[0];
+    
+    // If approved withdrawal, deduct from balance
+    if (action === 'approve' && transaction.type === 'withdrawal') {
+      await pool.query(
+        'UPDATE users SET balance = balance - $1 WHERE id = $2',
+        [Math.abs(parseFloat(transaction.amount)), transaction.user_id]
+      );
+    }
+    
+    // If rejected withdrawal, return money
+    if (action === 'reject' && transaction.type === 'withdrawal') {
+      await pool.query(
+        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+        [Math.abs(parseFloat(transaction.amount)), transaction.user_id]
+      );
+    }
+    
+    res.json({ success: true, message: `Transaction ${action}d`, data: transaction });
   } catch (error) {
-    console.error('Update all settings error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update settings'
-    });
+    console.error('Transaction action error:', error);
+    res.status(500).json({ success: false, error: 'Failed to process transaction' });
   }
 });
 
-// Reset settings to defaults
-router.post('/settings/reset', adminAuth, async (req, res) => {
+// Get game sessions
+router.get('/games/sessions', adminAuth, async (req, res) => {
   try {
-    const settings = await Settings.reset();
+    const { page = 1, limit = 50, status } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    console.log(`Admin ${req.user.username} reset settings to defaults`);
+    let query = `
+      SELECT gs.*, u.username, u.odid
+      FROM game_sessions gs
+      JOIN users u ON gs.user_id = u.id
+    `;
+    const values = [];
     
-    res.json({
-      success: true,
-      message: 'Settings reset to defaults',
-      data: settings
-    });
+    if (status && status !== 'all') {
+      values.push(status);
+      query += ' WHERE gs.status = $1';
+    }
+    
+    query += ` ORDER BY gs.started_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
+    
+    const result = await pool.query(query, values);
+    
+    res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('Reset settings error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset settings'
-    });
+    console.error('Get game sessions error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get game sessions' });
+  }
+});
+
+// Settings
+router.get('/settings/:key', adminAuth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM settings WHERE key = $1', [req.params.key]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Setting not found' });
+    }
+    
+    res.json({ success: true, data: result.rows[0].value });
+  } catch (error) {
+    console.error('Get setting error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get setting' });
+  }
+});
+
+router.put('/settings/:key', adminAuth, async (req, res) => {
+  try {
+    const { value } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP)
+       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [req.params.key, JSON.stringify(value)]
+    );
+    
+    res.json({ success: true, message: 'Setting updated', data: result.rows[0] });
+  } catch (error) {
+    console.error('Update setting error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update setting' });
   }
 });
 

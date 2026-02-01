@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const pool = require('../config/database');
 const { auth, adminAuth } = require('../middleware/auth');
 
 // Создаём папку uploads если её нет
@@ -27,90 +28,53 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Неподдерживаемый формат файла. Используйте JPG, PNG, GIF, WEBP или PDF.'));
+      cb(new Error('Неподдерживаемый формат файла'));
     }
   }
 });
-
-// In-memory хранилище верификаций
-let verifications = [
-  {
-    id: 'VER-001',
-    odid: 'AUREX-000001',
-    userId: '1',
-    username: 'testuser',
-    email: 'test@example.com',
-    status: 'pending',
-    level: 1,
-    documents: {
-      passport: { uploaded: true, status: 'pending', url: '/uploads/passport_1.jpg' },
-      selfie: { uploaded: true, status: 'pending', url: '/uploads/selfie_1.jpg' },
-      address: { uploaded: false, status: 'not_uploaded' },
-    },
-    personalInfo: {
-      firstName: 'Иван',
-      lastName: 'Петров',
-      dateOfBirth: '1990-05-15',
-      country: 'Россия',
-      city: 'Москва',
-      address: 'ул. Пушкина, д. 10',
-    },
-    submittedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'VER-002',
-    odid: 'AUREX-000002',
-    userId: '2',
-    username: 'cryptofan',
-    email: 'crypto@email.com',
-    status: 'approved',
-    level: 2,
-    documents: {
-      passport: { uploaded: true, status: 'approved', url: '/uploads/passport_2.jpg' },
-      selfie: { uploaded: true, status: 'approved', url: '/uploads/selfie_2.jpg' },
-      address: { uploaded: true, status: 'approved', url: '/uploads/address_2.jpg' },
-    },
-    personalInfo: {
-      firstName: 'Алексей',
-      lastName: 'Смирнов',
-      dateOfBirth: '1985-11-20',
-      country: 'Россия',
-      city: 'Санкт-Петербург',
-      address: 'Невский пр., д. 100',
-    },
-    submittedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    approvedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date().toISOString(),
-  },
-];
 
 // ============ USER ROUTES ============
 
 // Получить статус верификации
 router.get('/status', auth, async (req, res) => {
   try {
-    const verification = verifications.find(v => v.odid === req.user.odid || v.userId === req.user.id);
+    const result = await pool.query(
+      'SELECT * FROM verifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [req.user.id]
+    );
     
-    if (!verification) {
+    if (result.rows.length === 0) {
       return res.json({ 
         success: true, 
         data: { 
           status: 'not_started',
           level: 0,
-          message: 'Верификация не начата'
+          documents: {}
         } 
       });
     }
     
-    res.json({ success: true, data: verification });
+    const v = result.rows[0];
+    res.json({ 
+      success: true, 
+      data: {
+        id: v.id,
+        status: v.status,
+        level: v.level,
+        documents: v.documents || {},
+        personalInfo: v.personal_info || {},
+        submittedAt: v.submitted_at,
+        reviewedAt: v.reviewed_at
+      }
+    });
   } catch (error) {
+    console.error('Get verification status error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -118,38 +82,30 @@ router.get('/status', auth, async (req, res) => {
 // Начать верификацию
 router.post('/start', auth, async (req, res) => {
   try {
-    const existing = verifications.find(v => v.odid === req.user.odid || v.userId === req.user.id);
+    // Проверяем есть ли уже верификация
+    const existing = await pool.query(
+      'SELECT * FROM verifications WHERE user_id = $1',
+      [req.user.id]
+    );
     
-    if (existing) {
+    if (existing.rows.length > 0) {
       return res.status(400).json({ success: false, message: 'Верификация уже начата' });
     }
     
-    const newVerification = {
-      id: `VER-${String(Date.now()).slice(-6)}`,
-      odid: req.user.odid || `AUREX-${String(req.user.id).padStart(6, '0')}`,
-      userId: req.user.id,
-      username: req.user.username,
-      email: req.user.email,
-      status: 'pending',
-      level: 0,
-      documents: {
-        passport: { uploaded: false, status: 'not_uploaded' },
-        selfie: { uploaded: false, status: 'not_uploaded' },
-        address: { uploaded: false, status: 'not_uploaded' },
-      },
-      personalInfo: req.body.personalInfo || {},
-      submittedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
+    const result = await pool.query(
+      `INSERT INTO verifications (user_id, status, level, documents, personal_info)
+       VALUES ($1, 'pending', 0, $2, $3) RETURNING *`,
+      [req.user.id, JSON.stringify({}), JSON.stringify(req.body.personalInfo || {})]
+    );
     
-    verifications.push(newVerification);
-    res.json({ success: true, message: 'Верификация начата', data: newVerification });
+    res.json({ success: true, message: 'Верификация начата', data: result.rows[0] });
   } catch (error) {
+    console.error('Start verification error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Загрузить документ (реальная загрузка файла)
+// Загрузить документ
 router.post('/upload/:docType', auth, upload.single('file'), async (req, res) => {
   try {
     const { docType } = req.params;
@@ -157,91 +113,49 @@ router.post('/upload/:docType', auth, upload.single('file'), async (req, res) =>
       return res.status(400).json({ success: false, message: 'Неверный тип документа' });
     }
 
-    let verification = verifications.find(v => v.odid === req.user.odid || v.userId === req.user.id);
+    // Получаем или создаём верификацию
+    let result = await pool.query(
+      'SELECT * FROM verifications WHERE user_id = $1',
+      [req.user.id]
+    );
     
-    // Автоматически создаём верификацию если нет
-    if (!verification) {
-      verification = {
-        id: `VER-${String(Date.now()).slice(-6)}`,
-        odid: req.user.odid || `AUREX-${String(req.user.id).padStart(6, '0')}`,
-        userId: req.user.id,
-        username: req.user.username,
-        email: req.user.email,
-        status: 'pending',
-        level: 0,
-        documents: {
-          passport: { uploaded: false, status: 'not_uploaded' },
-          selfie: { uploaded: false, status: 'not_uploaded' },
-          address: { uploaded: false, status: 'not_uploaded' },
-        },
-        personalInfo: {},
-        submittedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      };
-      verifications.push(verification);
+    let verificationId;
+    let documents = {};
+    
+    if (result.rows.length === 0) {
+      // Создаём новую
+      const insert = await pool.query(
+        `INSERT INTO verifications (user_id, status, level, documents, personal_info)
+         VALUES ($1, 'pending', 0, $2, $3) RETURNING *`,
+        [req.user.id, JSON.stringify({}), JSON.stringify({})]
+      );
+      verificationId = insert.rows[0].id;
+    } else {
+      verificationId = result.rows[0].id;
+      documents = result.rows[0].documents || {};
     }
 
-    // Если файл загружен через multer
-    if (req.file) {
-      verification.documents[docType] = {
-        uploaded: true,
-        status: 'pending',
-        url: `/uploads/verification/${req.file.filename}`,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        uploadedAt: new Date().toISOString(),
-      };
-    } else if (req.body.fileData) {
-      // Base64 загрузка (альтернатива)
-      const base64Data = req.body.fileData.replace(/^data:image\/\w+;base64,/, '');
-      const ext = req.body.fileData.includes('png') ? '.png' : '.jpg';
-      const filename = `${docType}_${req.user.id}_${Date.now()}${ext}`;
-      const filepath = path.join(uploadsDir, filename);
-      
-      fs.writeFileSync(filepath, base64Data, 'base64');
-      
-      verification.documents[docType] = {
-        uploaded: true,
-        status: 'pending',
-        url: `/uploads/verification/${filename}`,
-        filename: filename,
-        originalName: req.body.filename || `${docType}${ext}`,
-        uploadedAt: new Date().toISOString(),
-      };
-    } else {
-      // Имитация загрузки (для совместимости)
-      const filename = `${docType}_${req.user.id}_${Date.now()}.jpg`;
-      verification.documents[docType] = {
-        uploaded: true,
-        status: 'pending',
-        url: `/uploads/verification/${filename}`,
-        filename: filename,
-        originalName: req.body.filename || `${docType}.jpg`,
-        uploadedAt: new Date().toISOString(),
-      };
-    }
+    // Обновляем документ
+    const fileUrl = req.file 
+      ? `/uploads/verification/${req.file.filename}`
+      : `/uploads/verification/${docType}_${req.user.id}_${Date.now()}.jpg`;
     
-    res.json({ success: true, message: 'Документ загружен', data: verification });
+    documents[docType] = {
+      uploaded: true,
+      status: 'pending',
+      url: fileUrl,
+      filename: req.file?.filename || `${docType}_${req.user.id}.jpg`,
+      uploadedAt: new Date().toISOString()
+    };
+
+    await pool.query(
+      'UPDATE verifications SET documents = $1, submitted_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [JSON.stringify(documents), verificationId]
+    );
+    
+    res.json({ success: true, message: 'Документ загружен', data: { documents } });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Скачать документ (для админов)
-router.get('/download/:filename', adminAuth, async (req, res) => {
-  try {
-    const { filename } = req.params;
-    const filepath = path.join(uploadsDir, filename);
-    
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ success: false, message: 'Файл не найден' });
-    }
-    
-    res.download(filepath, filename);
-  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -253,20 +167,39 @@ router.get('/', adminAuth, async (req, res) => {
   try {
     const { status } = req.query;
     
-    let filtered = [...verifications];
+    let query = `
+      SELECT v.*, u.username, u.email, u.odid 
+      FROM verifications v
+      JOIN users u ON v.user_id = u.id
+    `;
+    const values = [];
+    
     if (status && status !== 'all') {
-      filtered = filtered.filter(v => v.status === status);
+      query += ' WHERE v.status = $1';
+      values.push(status);
     }
     
-    // Сортировка (pending первые)
-    filtered.sort((a, b) => {
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (b.status === 'pending' && a.status !== 'pending') return 1;
-      return new Date(b.submittedAt) - new Date(a.submittedAt);
-    });
+    query += ' ORDER BY CASE WHEN v.status = \'pending\' THEN 0 ELSE 1 END, v.submitted_at DESC';
     
-    res.json({ success: true, data: filtered });
+    const result = await pool.query(query, values);
+    
+    const data = result.rows.map(v => ({
+      id: v.id,
+      odid: v.odid,
+      userId: v.user_id,
+      username: v.username,
+      email: v.email,
+      status: v.status,
+      level: v.level,
+      documents: v.documents || {},
+      personalInfo: v.personal_info || {},
+      submittedAt: v.submitted_at,
+      reviewedAt: v.reviewed_at
+    }));
+    
+    res.json({ success: true, data });
   } catch (error) {
+    console.error('Get verifications error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -274,12 +207,21 @@ router.get('/', adminAuth, async (req, res) => {
 // Получить заявку по ID
 router.get('/:id', adminAuth, async (req, res) => {
   try {
-    const verification = verifications.find(v => v.id === req.params.id);
-    if (!verification) {
+    const result = await pool.query(
+      `SELECT v.*, u.username, u.email, u.odid 
+       FROM verifications v
+       JOIN users u ON v.user_id = u.id
+       WHERE v.id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Заявка не найдена' });
     }
-    res.json({ success: true, data: verification });
+    
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
+    console.error('Get verification error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -287,26 +229,26 @@ router.get('/:id', adminAuth, async (req, res) => {
 // Одобрить верификацию
 router.post('/:id/approve', adminAuth, async (req, res) => {
   try {
-    const verification = verifications.find(v => v.id === req.params.id);
+    const result = await pool.query(
+      `UPDATE verifications 
+       SET status = 'approved', level = $1, reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $2
+       WHERE id = $3 RETURNING *`,
+      [req.body.level || 1, req.user.id, req.params.id]
+    );
     
-    if (!verification) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Заявка не найдена' });
     }
     
-    verification.status = 'approved';
-    verification.level = req.body.level || 1;
-    verification.approvedAt = new Date().toISOString();
-    verification.approvedBy = req.user.id;
+    // Обновляем статус пользователя
+    await pool.query(
+      'UPDATE users SET is_verified = true WHERE id = $1',
+      [result.rows[0].user_id]
+    );
     
-    // Обновляем статус документов
-    Object.keys(verification.documents).forEach(key => {
-      if (verification.documents[key].uploaded) {
-        verification.documents[key].status = 'approved';
-      }
-    });
-    
-    res.json({ success: true, message: 'Верификация одобрена', data: verification });
+    res.json({ success: true, message: 'Верификация одобрена', data: result.rows[0] });
   } catch (error) {
+    console.error('Approve verification error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -314,19 +256,20 @@ router.post('/:id/approve', adminAuth, async (req, res) => {
 // Отклонить верификацию
 router.post('/:id/reject', adminAuth, async (req, res) => {
   try {
-    const verification = verifications.find(v => v.id === req.params.id);
+    const result = await pool.query(
+      `UPDATE verifications 
+       SET status = 'rejected', rejection_reason = $1, reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $2
+       WHERE id = $3 RETURNING *`,
+      [req.body.reason || 'Документы не соответствуют требованиям', req.user.id, req.params.id]
+    );
     
-    if (!verification) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Заявка не найдена' });
     }
     
-    verification.status = 'rejected';
-    verification.rejectedAt = new Date().toISOString();
-    verification.rejectedBy = req.user.id;
-    verification.rejectionReason = req.body.reason || 'Документы не соответствуют требованиям';
-    
-    res.json({ success: true, message: 'Верификация отклонена', data: verification });
+    res.json({ success: true, message: 'Верификация отклонена', data: result.rows[0] });
   } catch (error) {
+    console.error('Reject verification error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -334,13 +277,33 @@ router.post('/:id/reject', adminAuth, async (req, res) => {
 // Статистика KYC
 router.get('/admin/stats', adminAuth, async (req, res) => {
   try {
-    const stats = {
-      total: verifications.length,
-      pending: verifications.filter(v => v.status === 'pending').length,
-      approved: verifications.filter(v => v.status === 'approved').length,
-      rejected: verifications.filter(v => v.status === 'rejected').length,
-    };
-    res.json({ success: true, data: stats });
+    const result = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+        COUNT(*) FILTER (WHERE status = 'approved') as approved,
+        COUNT(*) FILTER (WHERE status = 'rejected') as rejected
+      FROM verifications
+    `);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Verification stats error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Скачать документ
+router.get('/download/:filename', adminAuth, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filepath = path.join(uploadsDir, filename);
+    
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ success: false, message: 'Файл не найден' });
+    }
+    
+    res.download(filepath, filename);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

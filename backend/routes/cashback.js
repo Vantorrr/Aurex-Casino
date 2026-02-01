@@ -1,430 +1,197 @@
 const express = require('express');
-const { User } = require('../models/temp-models');
-const { auth, adminAuth } = require('../middleware/auth');
 const router = express.Router();
+const pool = require('../config/database');
+const { auth, adminAuth } = require('../middleware/auth');
 
-// In-memory storage for cashback records
-global.tempCashbacks = global.tempCashbacks || [];
+// Получить VIP конфиг кэшбэка
+async function getVipCashbackPercent(vipLevel) {
+  const cashbackRates = {
+    1: 5,   // Bronze
+    2: 7,   // Silver
+    3: 10,  // Gold
+    4: 12,  // Platinum
+    5: 15   // Emperor
+  };
+  return cashbackRates[vipLevel] || 5;
+}
 
-// Cashback configuration
-const CASHBACK_CONFIG = {
-  regular: {
-    percent: 8,      // 8% для обычных игроков
-    wagering: 10,    // x10 вейджер
-    maxAmount: 30000 // Максимум ₽30,000
-  },
-  vip: {
-    percent: 15,     // 15% для VIP
-    wagering: 3,     // x3 вейджер
-    maxAmount: 150000 // Максимум ₽150,000
-  },
-  minVipLevel: 3     // VIP начинается с уровня 3 (Gold)
-};
-
-// Helper: Get week start (Monday 00:00)
-const getWeekStart = (date = new Date()) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-// Helper: Get week end (Sunday 23:59:59)
-const getWeekEnd = (date = new Date()) => {
-  const start = getWeekStart(date);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
-};
-
-// Helper: Calculate player's weekly loss
-const calculateWeeklyLoss = (user, weekStart, weekEnd) => {
-  // В реальной системе здесь был бы запрос к БД транзакций
-  // Сейчас используем симуляцию на основе статистики пользователя
-  
-  const stats = user.statistics || {};
-  const totalWagered = stats.totalWagered || 0;
-  const totalWon = stats.totalWon || 0;
-  
-  // Потери = ставки - выигрыши (если отрицательное = выигрыш)
-  const netLoss = totalWagered - totalWon;
-  
-  // Возвращаем только если в минусе (потери > 0)
-  return netLoss > 0 ? netLoss : 0;
-};
-
-// GET /api/cashback/status - Get user's cashback status
-router.get('/status', auth, async (req, res) => {
+// Получить доступный кэшбэк
+router.get('/available', auth, async (req, res) => {
   try {
-    const userResult = User.findById(req.user.id);
-    const user = await userResult.select('-password');
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
-    const isVip = (user.vipLevel || 1) >= CASHBACK_CONFIG.minVipLevel;
-    const config = isVip ? CASHBACK_CONFIG.vip : CASHBACK_CONFIG.regular;
-
-    // Calculate current week loss
-    const weeklyLoss = calculateWeeklyLoss(user, weekStart, weekEnd);
-    const potentialCashback = Math.min(weeklyLoss * (config.percent / 100), config.maxAmount);
-
-    // Check if cashback already received this week
-    const existingCashback = global.tempCashbacks.find(cb => 
-      cb.userId === user._id && 
-      new Date(cb.weekStart).getTime() === weekStart.getTime()
+    // Получаем VIP уровень пользователя
+    const userResult = await pool.query(
+      'SELECT vip_level FROM users WHERE id = $1',
+      [req.user.id]
     );
-
-    res.json({
-      success: true,
+    const vipLevel = userResult.rows[0]?.vip_level || 1;
+    const cashbackPercent = await getVipCashbackPercent(vipLevel);
+    
+    // Получаем незаклейменный кэшбэк
+    const result = await pool.query(
+      `SELECT * FROM cashback_records 
+       WHERE user_id = $1 AND status = 'pending'
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    
+    const totalAvailable = result.rows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    
+    res.json({ 
+      success: true, 
       data: {
-        isVip,
-        vipLevel: user.vipLevel || 1,
-        cashbackPercent: config.percent,
-        wagering: config.wagering,
-        maxAmount: config.maxAmount,
-        weekStart: weekStart.toISOString(),
-        weekEnd: weekEnd.toISOString(),
-        weeklyLoss,
-        potentialCashback: Math.round(potentialCashback),
-        alreadyReceived: !!existingCashback,
-        receivedAmount: existingCashback?.amount || 0,
-        nextCashbackDay: 'Суббота'
+        available: totalAvailable,
+        percent: cashbackPercent,
+        vipLevel,
+        records: result.rows.map(r => ({
+          id: r.id,
+          amount: parseFloat(r.amount),
+          period: r.period,
+          createdAt: r.created_at
+        }))
       }
     });
   } catch (error) {
-    console.error('Get cashback status error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get cashback status' });
+    console.error('Get available cashback error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /api/cashback/history - Get user's cashback history
-router.get('/history', auth, async (req, res) => {
-  try {
-    const userCashbacks = global.tempCashbacks
-      .filter(cb => cb.userId === req.user.id)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    res.json({
-      success: true,
-      data: userCashbacks
-    });
-  } catch (error) {
-    console.error('Get cashback history error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get cashback history' });
-  }
-});
-
-// POST /api/cashback/claim - Claim weekly cashback (if eligible)
+// Забрать кэшбэк
 router.post('/claim', auth, async (req, res) => {
   try {
-    const userResult = User.findById(req.user.id);
-    const user = await userResult.select('-password');
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
-    const today = new Date();
-    
-    // Check if it's Saturday (day 6)
-    if (today.getDay() !== 6) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Кэшбэк можно получить только по субботам!' 
-      });
-    }
-
-    // Check if already claimed this week
-    const existingCashback = global.tempCashbacks.find(cb => 
-      cb.userId === user._id && 
-      new Date(cb.weekStart).getTime() === weekStart.getTime()
+    // Получаем все pending кэшбэки
+    const result = await pool.query(
+      `SELECT * FROM cashback_records 
+       WHERE user_id = $1 AND status = 'pending'`,
+      [req.user.id]
     );
-
-    if (existingCashback) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Кэшбэк за эту неделю уже получен!' 
-      });
-    }
-
-    // Calculate loss and cashback
-    const isVip = (user.vipLevel || 1) >= CASHBACK_CONFIG.minVipLevel;
-    const config = isVip ? CASHBACK_CONFIG.vip : CASHBACK_CONFIG.regular;
-    const weeklyLoss = calculateWeeklyLoss(user, weekStart, weekEnd);
-
-    if (weeklyLoss <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Нет потерь за эту неделю. Кэшбэк не положен!' 
-      });
-    }
-
-    const cashbackAmount = Math.min(
-      Math.round(weeklyLoss * (config.percent / 100)),
-      config.maxAmount
-    );
-
-    // Create cashback record
-    const cashback = {
-      id: `CB-${Date.now()}`,
-      odid: `AUREX-CB-${String(global.tempCashbacks.length + 1).padStart(6, '0')}`,
-      userId: user._id,
-      username: user.username,
-      amount: cashbackAmount,
-      weeklyLoss,
-      percent: config.percent,
-      wagering: config.wagering,
-      wagerRequired: cashbackAmount * config.wagering,
-      wagerCompleted: 0,
-      isVip,
-      vipLevel: user.vipLevel || 1,
-      weekStart: weekStart.toISOString(),
-      weekEnd: weekEnd.toISOString(),
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-
-    global.tempCashbacks.push(cashback);
-
-    // Add to user's bonus balance
-    user.bonusBalance = (user.bonusBalance || 0) + cashbackAmount;
     
-    // Update wager requirements
-    user.wager = {
-      required: (user.wager?.required || 0) + cashback.wagerRequired,
-      completed: user.wager?.completed || 0,
-      active: true,
-      multiplier: config.wagering,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-    };
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: `Кэшбэк ${cashbackAmount}₽ успешно начислен!`,
-      data: cashback
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Нет доступного кэшбэка' });
+    }
+    
+    const totalAmount = result.rows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    const totalWager = result.rows.reduce((sum, r) => sum + parseFloat(r.wager_required || 0), 0);
+    
+    // Обновляем статус
+    await pool.query(
+      `UPDATE cashback_records 
+       SET status = 'claimed', claimed_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1 AND status = 'pending'`,
+      [req.user.id]
+    );
+    
+    // Добавляем на бонусный баланс
+    await pool.query(
+      'UPDATE users SET bonus_balance = bonus_balance + $1 WHERE id = $2',
+      [totalAmount, req.user.id]
+    );
+    
+    // Создаём бонус с вейджером если нужно
+    if (totalWager > 0) {
+      await pool.query(
+        `INSERT INTO bonuses (user_id, bonus_type, amount, wagering_requirement, wagering_completed, status, expires_at)
+         VALUES ($1, 'cashback', $2, $3, 0, 'active', NOW() + INTERVAL '7 days')`,
+        [req.user.id, totalAmount, totalWager]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Кэшбэк ₽${totalAmount.toFixed(2)} получен!`,
+      data: {
+        amount: totalAmount,
+        wagerRequired: totalWager
+      }
     });
   } catch (error) {
     console.error('Claim cashback error:', error);
-    res.status(500).json({ success: false, error: 'Failed to claim cashback' });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// ===================== ADMIN ROUTES =====================
-
-// GET /api/cashback/admin/all - Get all cashback records (admin)
-router.get('/admin/all', adminAuth, async (req, res) => {
+// Получить историю кэшбэка
+router.get('/history', auth, async (req, res) => {
   try {
-    const cashbacks = global.tempCashbacks
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    const result = await pool.query(
+      `SELECT * FROM cashback_records 
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.id, parseInt(limit), offset]
+    );
+    
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get cashback history error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-    const stats = {
-      totalCashbacks: cashbacks.length,
-      totalAmount: cashbacks.reduce((sum, cb) => sum + cb.amount, 0),
-      thisWeek: cashbacks.filter(cb => 
-        new Date(cb.weekStart).getTime() === getWeekStart().getTime()
-      ).length
-    };
+// ============ SYSTEM ROUTES (вызываются при проигрышах) ============
 
-    res.json({
-      success: true,
+// Начислить кэшбэк (вызывается системой при проигрыше)
+router.post('/accrue', auth, async (req, res) => {
+  try {
+    const { lossAmount, period = 'daily' } = req.body;
+    
+    if (!lossAmount || lossAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Неверная сумма' });
+    }
+    
+    // Получаем VIP уровень
+    const userResult = await pool.query(
+      'SELECT vip_level FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const vipLevel = userResult.rows[0]?.vip_level || 1;
+    const cashbackPercent = await getVipCashbackPercent(vipLevel);
+    
+    const cashbackAmount = lossAmount * (cashbackPercent / 100);
+    const wagerRequired = cashbackAmount * 5; // x5 вейджер на кэшбэк
+    
+    await pool.query(
+      `INSERT INTO cashback_records (user_id, amount, period, wager_required, status)
+       VALUES ($1, $2, $3, $4, 'pending')`,
+      [req.user.id, cashbackAmount, period, wagerRequired]
+    );
+    
+    res.json({ 
+      success: true, 
       data: {
-        cashbacks,
-        stats
+        cashbackAmount,
+        percent: cashbackPercent
       }
     });
   } catch (error) {
-    console.error('Admin get cashbacks error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get cashbacks' });
+    console.error('Accrue cashback error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// POST /api/cashback/admin/process - Process cashback for all eligible users (admin)
-router.post('/admin/process', adminAuth, async (req, res) => {
+// ============ ADMIN ROUTES ============
+
+// Статистика кэшбэка
+router.get('/admin/stats', adminAuth, async (req, res) => {
   try {
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
-    const users = await User.find();
+    const result = await pool.query(`
+      SELECT 
+        COUNT(*) as total_records,
+        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+        COUNT(*) FILTER (WHERE status = 'claimed') as claimed,
+        COALESCE(SUM(amount), 0) as total_amount,
+        COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) as pending_amount,
+        COALESCE(SUM(amount) FILTER (WHERE status = 'claimed'), 0) as claimed_amount
+      FROM cashback_records
+    `);
     
-    const results = {
-      processed: 0,
-      skipped: 0,
-      totalAmount: 0,
-      details: []
-    };
-
-    for (const user of users) {
-      // Skip admins
-      if (user.isAdmin) {
-        results.skipped++;
-        continue;
-      }
-
-      // Check if already has cashback this week
-      const existingCashback = global.tempCashbacks.find(cb => 
-        cb.userId === user._id && 
-        new Date(cb.weekStart).getTime() === weekStart.getTime()
-      );
-
-      if (existingCashback) {
-        results.skipped++;
-        results.details.push({
-          userId: user._id,
-          username: user.username,
-          status: 'already_received'
-        });
-        continue;
-      }
-
-      // Calculate loss
-      const weeklyLoss = calculateWeeklyLoss(user, weekStart, weekEnd);
-
-      if (weeklyLoss <= 0) {
-        results.skipped++;
-        results.details.push({
-          userId: user._id,
-          username: user.username,
-          status: 'no_loss'
-        });
-        continue;
-      }
-
-      // Determine config based on VIP
-      const isVip = (user.vipLevel || 1) >= CASHBACK_CONFIG.minVipLevel;
-      const config = isVip ? CASHBACK_CONFIG.vip : CASHBACK_CONFIG.regular;
-
-      const cashbackAmount = Math.min(
-        Math.round(weeklyLoss * (config.percent / 100)),
-        config.maxAmount
-      );
-
-      // Create cashback
-      const cashback = {
-        id: `CB-${Date.now()}-${user._id}`,
-        odid: `AUREX-CB-${String(global.tempCashbacks.length + 1).padStart(6, '0')}`,
-        userId: user._id,
-        username: user.username,
-        amount: cashbackAmount,
-        weeklyLoss,
-        percent: config.percent,
-        wagering: config.wagering,
-        wagerRequired: cashbackAmount * config.wagering,
-        wagerCompleted: 0,
-        isVip,
-        vipLevel: user.vipLevel || 1,
-        weekStart: weekStart.toISOString(),
-        weekEnd: weekEnd.toISOString(),
-        status: 'active',
-        processedByAdmin: true,
-        createdAt: new Date().toISOString()
-      };
-
-      global.tempCashbacks.push(cashback);
-
-      // Update user balance
-      user.bonusBalance = (user.bonusBalance || 0) + cashbackAmount;
-      user.wager = {
-        required: (user.wager?.required || 0) + cashback.wagerRequired,
-        completed: user.wager?.completed || 0,
-        active: true,
-        multiplier: config.wagering,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      };
-
-      await user.save();
-
-      results.processed++;
-      results.totalAmount += cashbackAmount;
-      results.details.push({
-        userId: user._id,
-        username: user.username,
-        status: 'success',
-        amount: cashbackAmount,
-        isVip
-      });
-    }
-
-    res.json({
-      success: true,
-      message: `Кэшбэк обработан! Начислено ${results.processed} игрокам на сумму ${results.totalAmount}₽`,
-      data: results
-    });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    console.error('Admin process cashback error:', error);
-    res.status(500).json({ success: false, error: 'Failed to process cashback' });
-  }
-});
-
-// POST /api/cashback/admin/user/:userId - Manually add cashback to user (admin)
-router.post('/admin/user/:userId', adminAuth, async (req, res) => {
-  try {
-    const { amount, reason } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ success: false, error: 'Invalid amount' });
-    }
-
-    const userResult = User.findById(req.params.userId);
-    const user = await userResult.select('-password');
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    const isVip = (user.vipLevel || 1) >= CASHBACK_CONFIG.minVipLevel;
-    const config = isVip ? CASHBACK_CONFIG.vip : CASHBACK_CONFIG.regular;
-
-    const cashback = {
-      id: `CB-MANUAL-${Date.now()}`,
-      odid: `AUREX-CB-${String(global.tempCashbacks.length + 1).padStart(6, '0')}`,
-      userId: user._id,
-      username: user.username,
-      amount: amount,
-      weeklyLoss: 0,
-      percent: 0,
-      wagering: config.wagering,
-      wagerRequired: amount * config.wagering,
-      wagerCompleted: 0,
-      isVip,
-      vipLevel: user.vipLevel || 1,
-      weekStart: null,
-      weekEnd: null,
-      status: 'active',
-      isManual: true,
-      reason: reason || 'Ручное начисление администратором',
-      processedByAdmin: true,
-      createdAt: new Date().toISOString()
-    };
-
-    global.tempCashbacks.push(cashback);
-
-    // Update user
-    user.bonusBalance = (user.bonusBalance || 0) + amount;
-    user.wager = {
-      required: (user.wager?.required || 0) + cashback.wagerRequired,
-      completed: user.wager?.completed || 0,
-      active: true,
-      multiplier: config.wagering,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    };
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: `Кэшбэк ${amount}₽ начислен пользователю ${user.username}`,
-      data: cashback
-    });
-  } catch (error) {
-    console.error('Admin manual cashback error:', error);
-    res.status(500).json({ success: false, error: 'Failed to add cashback' });
+    console.error('Cashback stats error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

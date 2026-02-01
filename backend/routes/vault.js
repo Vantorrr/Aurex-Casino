@@ -1,203 +1,224 @@
 const express = require('express');
-const { User } = require('../models/temp-models');
-const { auth } = require('../middleware/auth');
 const router = express.Router();
+const pool = require('../config/database');
+const { auth } = require('../middleware/auth');
 
-// In-memory storage for vault bonuses
-global.tempVaultBonuses = global.tempVaultBonuses || [];
+// Создать дефолтные бонусы для пользователя
+async function createDefaultBonuses(userId, vipLevel = 1) {
+  const defaultBonuses = [
+    {
+      type: 'freespins',
+      name: 'Ежедневные фриспины',
+      description: '25 бесплатных вращений каждый день',
+      value: '25 FS',
+      value_amount: 25,
+      icon: '🎰',
+      gradient: 'from-purple-500 to-pink-500',
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      is_locked: false,
+      wager_required: 30
+    },
+    {
+      type: 'cashback',
+      name: 'Недельный кэшбэк',
+      description: 'Возврат 10% от проигрышей за неделю',
+      value: '10%',
+      value_amount: 0,
+      icon: '💰',
+      gradient: 'from-green-500 to-emerald-500',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      is_locked: false,
+      wager_required: 5
+    },
+    {
+      type: 'reload',
+      name: 'Бонус на депозит',
+      description: '50% бонус на следующий депозит',
+      value: '50%',
+      value_amount: 50,
+      icon: '🎁',
+      gradient: 'from-blue-500 to-cyan-500',
+      expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      is_locked: false,
+      wager_required: 25
+    },
+    {
+      type: 'vip',
+      name: 'VIP Бонус',
+      description: 'Эксклюзивный бонус для VIP игроков',
+      value: '₽5,000',
+      value_amount: 5000,
+      icon: '👑',
+      gradient: 'from-aurex-gold-500 to-amber-500',
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      is_locked: vipLevel < 3,
+      unlock_condition: vipLevel < 3 ? 'Достигните VIP уровня Gold (3+)' : null,
+      wager_required: 15
+    }
+  ];
 
-// GET /api/vault/stats - Get user's vault statistics
-router.get('/stats', auth, async (req, res) => {
-  try {
-    const userBonuses = global.tempVaultBonuses.filter(b => b.userId === req.user.id);
-    const activeBonuses = userBonuses.filter(b => !b.isLocked && b.status === 'active');
-    const lockedBonuses = userBonuses.filter(b => b.isLocked);
-    
-    const stats = {
-      totalBonuses: userBonuses.length,
-      activeBonuses: activeBonuses.length,
-      lockedBonuses: lockedBonuses.length,
-      totalValue: userBonuses.reduce((sum, b) => sum + (b.valueAmount || 0), 0),
-      savedThisMonth: activeBonuses.reduce((sum, b) => sum + (b.valueAmount || 0), 0)
-    };
-
-    res.json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('Get vault stats error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get vault stats' });
+  for (const bonus of defaultBonuses) {
+    await pool.query(
+      `INSERT INTO vault_bonuses (user_id, type, name, description, value, value_amount, icon, gradient, expires_at, is_locked, unlock_condition, wager_required, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'available')`,
+      [userId, bonus.type, bonus.name, bonus.description, bonus.value, bonus.value_amount, bonus.icon, bonus.gradient, bonus.expires_at, bonus.is_locked, bonus.unlock_condition, bonus.wager_required]
+    );
   }
-});
+}
 
-// GET /api/vault/bonuses - Get user's vault bonuses
+// Получить бонусы пользователя
 router.get('/bonuses', auth, async (req, res) => {
   try {
     const { status } = req.query;
     
-    // Get current user VIP level
-    const userResult = User.findById(req.user.id);
-    const user = await userResult.select('-password');
-    const vipLevel = user?.vipLevel || 0;
+    // Получаем VIP уровень пользователя
+    const userResult = await pool.query('SELECT vip_level FROM users WHERE id = $1', [req.user.id]);
+    const vipLevel = userResult.rows[0]?.vip_level || 1;
     
-    let userBonuses = global.tempVaultBonuses.filter(b => b.userId === req.user.id);
+    // Проверяем есть ли бонусы у пользователя
+    let result = await pool.query(
+      'SELECT * FROM vault_bonuses WHERE user_id = $1',
+      [req.user.id]
+    );
     
-    // If no bonuses, create some default ones for the user
-    if (userBonuses.length === 0) {
-      const defaultBonuses = createDefaultBonuses(req.user.id, vipLevel);
-      global.tempVaultBonuses.push(...defaultBonuses);
-      userBonuses = defaultBonuses;
-    } else {
-      // Update VIP bonus lock status based on current VIP level
-      const isVipUnlocked = vipLevel >= 3;
-      userBonuses = userBonuses.map(b => {
-        if (b.type === 'vip') {
-          return {
-            ...b,
-            isLocked: !isVipUnlocked,
-            unlockCondition: isVipUnlocked ? undefined : 'Достигните VIP уровня Gold (3+)'
-          };
-        }
-        return b;
-      });
-      // Update in global storage too
-      global.tempVaultBonuses = global.tempVaultBonuses.map(b => {
-        if (b.userId === req.user.id && b.type === 'vip') {
-          return {
-            ...b,
-            isLocked: !isVipUnlocked,
-            unlockCondition: isVipUnlocked ? undefined : 'Достигните VIP уровня Gold (3+)'
-          };
-        }
-        return b;
-      });
+    // Если бонусов нет - создаём дефолтные
+    if (result.rows.length === 0) {
+      await createDefaultBonuses(req.user.id, vipLevel);
+      result = await pool.query(
+        'SELECT * FROM vault_bonuses WHERE user_id = $1',
+        [req.user.id]
+      );
     }
     
-    // Filter by status if requested
+    // Обновляем статус VIP бонуса на основе текущего VIP уровня
+    await pool.query(
+      `UPDATE vault_bonuses 
+       SET is_locked = $1, unlock_condition = $2
+       WHERE user_id = $3 AND type = 'vip' AND status = 'available'`,
+      [vipLevel < 3, vipLevel < 3 ? 'Достигните VIP уровня Gold (3+)' : null, req.user.id]
+    );
+    
+    // Повторно получаем обновлённые бонусы
+    let query = 'SELECT * FROM vault_bonuses WHERE user_id = $1';
+    const values = [req.user.id];
+    
     if (status === 'available') {
-      userBonuses = userBonuses.filter(b => !b.isLocked && b.status !== 'used' && b.status !== 'activated');
+      query += " AND status = 'available' AND is_locked = false";
     } else if (status === 'locked') {
-      userBonuses = userBonuses.filter(b => b.isLocked);
+      query += " AND is_locked = true AND status = 'available'";
     } else if (status === 'used') {
-      userBonuses = userBonuses.filter(b => b.status === 'used' || b.status === 'activated');
+      query += " AND status IN ('used', 'activated')";
     }
-
-    res.json({
-      success: true,
-      data: userBonuses
-    });
+    
+    query += ' ORDER BY created_at DESC';
+    
+    result = await pool.query(query, values);
+    
+    const bonuses = result.rows.map(b => ({
+      id: b.id.toString(),
+      type: b.type,
+      name: b.name,
+      description: b.description,
+      value: b.value,
+      valueAmount: parseFloat(b.value_amount) || 0,
+      icon: b.icon,
+      gradient: b.gradient,
+      expiresAt: b.expires_at,
+      isLocked: b.is_locked,
+      unlockCondition: b.unlock_condition,
+      wagerRequired: b.wager_required,
+      wagerCompleted: b.wager_completed,
+      status: b.status,
+      activatedAt: b.activated_at
+    }));
+    
+    res.json({ success: true, data: bonuses });
   } catch (error) {
     console.error('Get vault bonuses error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get bonuses' });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// POST /api/vault/activate/:bonusId - Activate a vault bonus
+// Активировать бонус
 router.post('/activate/:bonusId', auth, async (req, res) => {
   try {
-    const bonusIndex = global.tempVaultBonuses.findIndex(
-      b => b.id === req.params.bonusId && b.userId === req.user.id
+    const { bonusId } = req.params;
+    
+    const result = await pool.query(
+      'SELECT * FROM vault_bonuses WHERE id = $1 AND user_id = $2',
+      [bonusId, req.user.id]
     );
-
-    if (bonusIndex === -1) {
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Бонус не найден' });
     }
-
-    const bonus = global.tempVaultBonuses[bonusIndex];
-
-    if (bonus.isLocked) {
-      return res.status(400).json({ success: false, error: bonus.unlockCondition || 'Бонус заблокирован' });
+    
+    const bonus = result.rows[0];
+    
+    if (bonus.is_locked) {
+      return res.status(400).json({ success: false, error: bonus.unlock_condition || 'Бонус заблокирован' });
     }
-
+    
     if (bonus.status === 'used' || bonus.status === 'activated') {
       return res.status(400).json({ success: false, error: 'Бонус уже активирован' });
     }
-
-    // Activate the bonus and mark as used
-    global.tempVaultBonuses[bonusIndex] = {
-      ...bonus,
-      status: 'used',
-      activatedAt: new Date().toISOString()
-    };
-
-    // Apply bonus to user
-    const userResult = User.findById(req.user.id);
-    const user = await userResult.select('-password');
     
-    if (user && bonus.type === 'cashback') {
-      user.balance = (user.balance || 0) + (bonus.valueAmount || 0);
-      await user.save();
+    if (new Date(bonus.expires_at) < new Date()) {
+      await pool.query(
+        "UPDATE vault_bonuses SET status = 'expired' WHERE id = $1",
+        [bonusId]
+      );
+      return res.status(400).json({ success: false, error: 'Срок действия бонуса истёк' });
     }
-
-    res.json({
-      success: true,
+    
+    // Активируем бонус
+    await pool.query(
+      "UPDATE vault_bonuses SET status = 'used', activated_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [bonusId]
+    );
+    
+    // Если это денежный бонус - добавляем на баланс
+    if (bonus.value_amount > 0 && ['reload', 'vip', 'special'].includes(bonus.type)) {
+      await pool.query(
+        'UPDATE users SET bonus_balance = bonus_balance + $1 WHERE id = $2',
+        [bonus.value_amount, req.user.id]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
       message: `Бонус "${bonus.name}" активирован!`,
-      data: global.tempVaultBonuses[bonusIndex]
+      data: {
+        bonusId: bonus.id,
+        type: bonus.type,
+        value: bonus.value,
+        valueAmount: parseFloat(bonus.value_amount)
+      }
     });
   } catch (error) {
-    console.error('Activate vault bonus error:', error);
-    res.status(500).json({ success: false, error: 'Failed to activate bonus' });
+    console.error('Activate bonus error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Helper: Create default bonuses for new users
-function createDefaultBonuses(userId, vipLevel = 0) {
-  const now = new Date();
-  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-  // VIP бонус разблокирован для VIP 3+ (Gold и выше)
-  const isVipUnlocked = vipLevel >= 3;
-
-  return [
-    {
-      id: `vault-${userId}-1`,
-      odid: `AUREX-VAULT-${Date.now()}-1`,
-      userId,
-      type: 'freespins',
-      name: 'Приветственные фриспины',
-      description: '25 фриспинов в Sweet Bonanza',
-      value: '25 FS',
-      valueAmount: 250,
-      icon: '🎰',
-      expiresAt: weekFromNow.toISOString(),
-      isLocked: false,
-      status: 'active',
-      createdAt: now.toISOString()
-    },
-    {
-      id: `vault-${userId}-2`,
-      odid: `AUREX-VAULT-${Date.now()}-2`,
-      userId,
-      type: 'reload',
-      name: 'Weekend Reload',
-      description: '50% бонус на пополнение в выходные',
-      value: '50%',
-      valueAmount: 0,
-      icon: '💎',
-      expiresAt: weekFromNow.toISOString(),
-      isLocked: false,
-      status: 'active',
-      createdAt: now.toISOString()
-    },
-    {
-      id: `vault-${userId}-3`,
-      odid: `AUREX-VAULT-${Date.now()}-3`,
-      userId,
-      type: 'vip',
-      name: 'VIP бонус',
-      description: 'Эксклюзивный бонус для VIP игроков',
-      value: '₽5,000',
-      valueAmount: 5000,
-      icon: '👑',
-      expiresAt: monthFromNow.toISOString(),
-      isLocked: !isVipUnlocked,
-      unlockCondition: isVipUnlocked ? undefined : 'Достигните VIP уровня Gold (3+)',
-      status: 'active',
-      createdAt: now.toISOString()
-    }
-  ];
-}
+// Получить сводку хранилища
+router.get('/summary', auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE status = 'available' AND is_locked = false) as available,
+        COUNT(*) FILTER (WHERE is_locked = true AND status = 'available') as locked,
+        COUNT(*) FILTER (WHERE status IN ('used', 'activated')) as used,
+        COUNT(*) as total
+      FROM vault_bonuses
+      WHERE user_id = $1
+    `, [req.user.id]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Get vault summary error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

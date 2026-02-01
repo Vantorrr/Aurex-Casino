@@ -186,6 +186,40 @@ CREATE TABLE IF NOT EXISTS verifications (
   reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Vault bonuses table
+CREATE TABLE IF NOT EXISTS vault_bonuses (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL, -- freespins, cashback, reload, birthday, vip, special
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  value VARCHAR(100),
+  value_amount DECIMAL(15, 2),
+  icon VARCHAR(50),
+  gradient VARCHAR(100),
+  expires_at TIMESTAMP,
+  is_locked BOOLEAN DEFAULT FALSE,
+  unlock_condition TEXT,
+  wager_required INTEGER DEFAULT 0,
+  wager_completed INTEGER DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'available', -- available, activated, used, expired
+  activated_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cashback records
+CREATE TABLE IF NOT EXISTS cashback_records (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(15, 2) NOT NULL,
+  period VARCHAR(50), -- daily, weekly, monthly
+  wager_required DECIMAL(15, 2) DEFAULT 0,
+  wager_completed DECIMAL(15, 2) DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'pending', -- pending, claimed, expired
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  claimed_at TIMESTAMP
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
