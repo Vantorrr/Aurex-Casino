@@ -315,14 +315,13 @@ export default function RegisterPage() {
                     {/* Terms & Newsletter */}
                     <div className="space-y-3">
                       <label className="flex items-start space-x-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          {...register('terms', {
-                            required: 'Необходимо согласие с условиями'
-                          })}
-                          className="sr-only"
-                        />
                         <div className="custom-checkbox mt-0.5">
+                          <input
+                            type="checkbox"
+                            {...register('terms', {
+                              required: 'Необходимо согласие с условиями'
+                            })}
+                          />
                           <div className="checkbox-mark"></div>
                         </div>
                         <span className="text-gray-300 text-sm leading-relaxed">
@@ -341,12 +340,11 @@ export default function RegisterPage() {
                       )}
 
                       <label className="flex items-center space-x-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          {...register('newsletter')}
-                          className="sr-only"
-                        />
                         <div className="custom-checkbox">
+                          <input
+                            type="checkbox"
+                            {...register('newsletter')}
+                          />
                           <div className="checkbox-mark"></div>
                         </div>
                         <span className="text-gray-300 text-sm">
