@@ -558,7 +558,7 @@ global.promotionsConfig = global.promotionsConfig || {
       wagering: 'x25',
       validDays: 2,
       schedule: 'Сб-Вс',
-      image: '/images/promos/weekend.png',
+      image: '/images/promos/bonus.png',
       gradient: 'from-orange-500 via-red-500 to-pink-500',
       features: ['Каждую субботу и воскресенье', 'Автоматическое начисление']
     },
@@ -574,7 +574,7 @@ global.promotionsConfig = global.promotionsConfig || {
       wagering: 'x20',
       validDays: 1,
       schedule: 'Пн',
-      image: '/images/promos/monday.png',
+      image: '/images/promos/cashback.png',
       gradient: 'from-green-500 via-emerald-500 to-teal-500',
       features: ['Каждый понедельник', 'Минимальный вейджер x20']
     }
@@ -606,7 +606,7 @@ global.promotionsConfig = global.promotionsConfig || {
       bonusType: 'crypto',
       maxBonus: 'без лимита',
       wagering: 'x25',
-      image: '/images/promos/crypto.png',
+      image: '/images/promos/bonus.png',
       gradient: 'from-orange-500 via-amber-500 to-yellow-500',
       features: ['Bitcoin, Ethereum, USDT', 'Мгновенное зачисление', 'Дополнительно к основному бонусу'],
       isCrypto: true
@@ -622,7 +622,7 @@ global.promotionsConfig = global.promotionsConfig || {
       bonusType: 'vip',
       maxBonus: 'до ₽100,000',
       wagering: 'x15',
-      image: '/images/promos/vip.png',
+      image: '/images/promos/bonus.png',
       gradient: 'from-aurex-gold-500 via-amber-400 to-yellow-500',
       features: ['Персональный менеджер', 'Ускоренные выплаты', 'Эксклюзивные турниры'],
       isVip: true,
