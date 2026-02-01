@@ -37,7 +37,8 @@ router.get('/bonuses', auth, async (req, res) => {
     const { status } = req.query;
     
     // Get current user VIP level
-    const user = await User.findById(req.user.id);
+    const userResult = User.findById(req.user.id);
+    const user = await userResult.select('-password');
     const vipLevel = user?.vipLevel || 0;
     
     let userBonuses = global.tempVaultBonuses.filter(b => b.userId === req.user.id);
