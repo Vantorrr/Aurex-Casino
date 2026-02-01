@@ -65,7 +65,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <meta name="description" content="AUREX - премиальная крипто-казино платформа для High-roller и Crypto-investors. Мгновенные крипто-выплаты, VIP программа, эксклюзивные игры." />
+        <meta name="description" content="AUREX - премиальное онлайн-казино. Слоты от лучших провайдеров, Live Casino, турниры с призами до ₽1,000,000. Мгновенные выплаты, VIP программа, щедрые бонусы до ₽140,000." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         
         {/* Favicon */}
@@ -83,7 +83,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io/"} />
         <meta property="og:title" content="AUREX - The Golden Empire of Win" />
-        <meta property="og:description" content="Премиальная крипто-казино платформа для High-roller и Crypto-investors. Мгновенные выплаты, VIP программа, эксклюзивные игры." />
+        <meta property="og:description" content="Премиальное онлайн-казино с мгновенными выплатами. Слоты, Live Casino, турниры с призами до ₽1,000,000. VIP программа и щедрые бонусы." />
         <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io"}/images/og-image.jpg`} />
         <meta property="og:image:width" content="1264" />
         <meta property="og:image:height" content="848" />
@@ -95,7 +95,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content={process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io/"} />
         <meta name="twitter:title" content="AUREX - The Golden Empire of Win" />
-        <meta name="twitter:description" content="Премиальная крипто-казино платформа. Мгновенные крипто-выплаты, VIP программа." />
+        <meta name="twitter:description" content="Премиальное онлайн-казино. Мгновенные выплаты, слоты, Live Casino, VIP программа." />
         <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io"}/images/og-image.jpg`} />
       </Head>
       
