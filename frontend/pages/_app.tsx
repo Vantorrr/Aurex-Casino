@@ -81,19 +81,22 @@ export default function App({ Component, pageProps }: AppProps) {
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aurex.io/" />
+        <meta property="og:url" content={process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io/"} />
         <meta property="og:title" content="AUREX - The Golden Empire of Win" />
         <meta property="og:description" content="Премиальная крипто-казино платформа для High-roller и Crypto-investors. Мгновенные выплаты, VIP программа, эксклюзивные игры." />
-        <meta property="og:image" content="/images/og-image.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io"}/images/og-image.jpg`} />
+        <meta property="og:image:width" content="1264" />
+        <meta property="og:image:height" content="848" />
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:site_name" content="AUREX Casino" />
+        <meta property="og:locale" content="ru_RU" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:url" content="https://aurex.io/" />
+        <meta name="twitter:url" content={process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io/"} />
         <meta name="twitter:title" content="AUREX - The Golden Empire of Win" />
         <meta name="twitter:description" content="Премиальная крипто-казино платформа. Мгновенные крипто-выплаты, VIP программа." />
-        <meta name="twitter:image" content="/images/og-image.png" />
+        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || "https://aurex.io"}/images/og-image.jpg`} />
       </Head>
       
       <QueryClientProvider client={queryClient}>
