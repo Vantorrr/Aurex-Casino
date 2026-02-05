@@ -274,8 +274,11 @@ export default function HomePage() {
 
         {/* Stats Section - AUREX Empire */}
         <section className="py-24 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-900 via-aurex-obsidian-800 to-aurex-obsidian-900"></div>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(212, 175, 55, 0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-900 via-aurex-gold-900/30 to-aurex-obsidian-900"></div>
+          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(212, 175, 55, 0.5) 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+          {/* Golden glow effects */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-aurex-gold-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
           
           {/* Golden divider top */}
           <div className="aurex-divider mb-16"></div>
@@ -303,8 +306,8 @@ export default function HomePage() {
                 >
                   <div className="relative inline-block mb-6">
                     <div className="absolute inset-0 bg-aurex-gold-500 blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
-                    <div className="relative aurex-empire-border rounded-2xl p-4 bg-aurex-obsidian-800/50 backdrop-blur-sm">
-                      <stat.icon className="w-12 h-12 text-aurex-gold-500 mx-auto drop-shadow-lg" />
+                    <div className="relative aurex-empire-border rounded-2xl p-4 bg-aurex-obsidian-800/70 backdrop-blur-sm border border-aurex-gold-500/20">
+                      <stat.icon className="w-12 h-12 text-aurex-gold-400 mx-auto drop-shadow-lg" />
                     </div>
                   </div>
                   <div className="text-4xl font-black aurex-imperial-text mb-3" style={{ fontFamily: 'Cinzel, serif' }}>
@@ -323,8 +326,12 @@ export default function HomePage() {
         </section>
 
         {/* Featured Games - AUREX Collection */}
-        <section className="py-24 relative">
-          <div className="absolute inset-0 bg-aurex-obsidian-900"></div>
+        <section className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-aurex-obsidian-900 via-aurex-obsidian-800 to-aurex-obsidian-900"></div>
+          {/* Decorative gaming lights */}
+          <div className="absolute top-20 left-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-0 w-80 h-80 bg-aurex-gold-500/15 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-aurex-gold-500/5 rounded-full blur-3xl"></div>
           <div className="relative max-w-7xl mx-auto px-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -391,7 +398,11 @@ export default function HomePage() {
 
         {/* Imperial Jackpots Widget */}
         <section className="py-16 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-900 via-aurex-obsidian-800 to-aurex-obsidian-900"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-900 via-amber-900/20 to-aurex-obsidian-900"></div>
+          {/* Jackpot gold glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-aurex-gold-500/15 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl"></div>
           
           <div className="relative max-w-7xl mx-auto px-4">
             <motion.div
@@ -422,7 +433,7 @@ export default function HomePage() {
                     className="relative group cursor-pointer"
                   >
                     <Link href="/jackpots">
-                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10 rounded-2xl group-hover:opacity-20 transition-opacity`}></div>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-25 rounded-2xl group-hover:opacity-40 transition-opacity`}></div>
                       <div className="relative aurex-card p-4 md:p-6 text-center border-2 border-transparent group-hover:border-aurex-gold-500/30 transition-all">
                         <div className="flex justify-center mb-3">
                           <JackpotIcon tier={jp.id} className="w-16 h-16 md:w-20 md:h-20" />
@@ -458,11 +469,12 @@ export default function HomePage() {
 
         {/* Features Section - AUREX Advantages */}
         <section className="py-24 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-800 via-aurex-obsidian-900 to-aurex-obsidian-800"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-aurex-obsidian-800 via-aurex-gold-900/15 to-aurex-obsidian-800"></div>
           
-          {/* Decorative elements */}
-          <div className="absolute top-1/2 left-0 w-96 h-96 bg-aurex-gold-500/5 rounded-full blur-3xl -translate-y-1/2"></div>
-          <div className="absolute top-1/2 right-0 w-96 h-96 bg-aurex-platinum-200/5 rounded-full blur-3xl -translate-y-1/2"></div>
+          {/* Decorative elements - более яркие */}
+          <div className="absolute top-1/2 left-0 w-96 h-96 bg-aurex-gold-500/20 rounded-full blur-3xl -translate-y-1/2"></div>
+          <div className="absolute top-1/2 right-0 w-96 h-96 bg-amber-400/15 rounded-full blur-3xl -translate-y-1/2"></div>
+          <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-yellow-500/10 rounded-full blur-3xl"></div>
           
           <div className="relative max-w-7xl mx-auto px-4">
             <motion.div
@@ -493,7 +505,7 @@ export default function HomePage() {
                   transition={{ delay: index * 0.1 }}
                   className="group"
                 >
-                  <div className="relative aurex-empire-border rounded-2xl p-8 bg-aurex-obsidian-800/50 backdrop-blur-sm hover:bg-aurex-obsidian-700/50 transition-all duration-500 h-full">
+                  <div className="relative aurex-empire-border rounded-2xl p-8 bg-aurex-obsidian-800/70 backdrop-blur-sm hover:bg-aurex-gold-900/30 transition-all duration-500 h-full border border-aurex-gold-500/10 hover:border-aurex-gold-500/30">
                     {/* Icon container */}
                     <div className="relative inline-block mb-6">
                       <div className="absolute inset-0 bg-aurex-gold-500 blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
