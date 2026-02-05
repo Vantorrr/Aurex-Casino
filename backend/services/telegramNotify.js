@@ -157,6 +157,54 @@ ${this.escapeHtml(replyText)}
   }
   
   /**
+   * Отправить файл всем менеджерам
+   */
+  async sendFileToManagers(ticket, file, user) {
+    if (!BOT_TOKEN) return;
+    
+    const managers = await this.getActiveManagers();
+    const fs = require('fs');
+    const FormData = require('form-data');
+    const path = require('path');
+    
+    const filePath = file.path;
+    const mimeType = file.mimetype;
+    
+    for (const managerId of managers) {
+      try {
+        const form = new FormData();
+        form.append('chat_id', managerId);
+        form.append('caption', `📎 <b>Тикет #${ticket.id}</b>\n👤 ${user.username || user.email}\n📄 ${file.originalname}`);
+        form.append('parse_mode', 'HTML');
+        
+        // Determine file type and endpoint
+        let endpoint = 'sendDocument';
+        let fieldName = 'document';
+        
+        if (mimeType.startsWith('image/')) {
+          endpoint = 'sendPhoto';
+          fieldName = 'photo';
+        } else if (mimeType.startsWith('video/')) {
+          endpoint = 'sendVideo';
+          fieldName = 'video';
+        }
+        
+        form.append(fieldName, fs.createReadStream(filePath), {
+          filename: file.originalname,
+          contentType: mimeType
+        });
+        
+        await axios.post(`${TELEGRAM_API}/${endpoint}`, form, {
+          headers: form.getHeaders()
+        });
+        
+      } catch (error) {
+        console.error(`Failed to send file to manager ${managerId}:`, error.message);
+      }
+    }
+  }
+  
+  /**
    * Escape HTML для безопасной отправки
    */
   escapeHtml(text) {

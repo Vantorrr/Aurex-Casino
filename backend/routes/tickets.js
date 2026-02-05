@@ -1,8 +1,54 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const pool = require('../config/database');
 const { auth, adminAuth } = require('../middleware/auth');
 const telegramNotify = require('../services/telegramNotify');
+
+// File upload configuration
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads', 'tickets');
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `ticket-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Allowed file types
+  const allowedTypes = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf',
+    'video/mp4', 'video/webm', 'video/quicktime',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Недопустимый тип файла'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max
+  }
+});
 
 // ============ USER ROUTES ============
 
@@ -95,13 +141,14 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Добавить сообщение в тикет
-router.post('/:id/message', auth, async (req, res) => {
+// Добавить сообщение в тикет (с опциональным файлом)
+router.post('/:id/message', auth, upload.single('file'), async (req, res) => {
   try {
     const { message } = req.body;
+    const file = req.file;
     
-    if (!message) {
-      return res.status(400).json({ success: false, message: 'Сообщение обязательно' });
+    if (!message && !file) {
+      return res.status(400).json({ success: false, message: 'Сообщение или файл обязательны' });
     }
     
     // Проверяем что тикет принадлежит пользователю
@@ -114,10 +161,26 @@ router.post('/:id/message', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Тикет не найден' });
     }
     
+    // Build message with file info if present
+    let fullMessage = message || '';
+    let fileUrl = null;
+    let fileName = null;
+    let fileType = null;
+    
+    if (file) {
+      fileUrl = `/uploads/tickets/${file.filename}`;
+      fileName = file.originalname;
+      fileType = file.mimetype;
+      
+      if (!fullMessage) {
+        fullMessage = `[Файл: ${fileName}]`;
+      }
+    }
+    
     await pool.query(
-      `INSERT INTO ticket_messages (ticket_id, user_id, message, is_staff)
-       VALUES ($1, $2, $3, false)`,
-      [req.params.id, req.user.id, message]
+      `INSERT INTO ticket_messages (ticket_id, user_id, message, is_staff, file_url, file_name, file_type)
+       VALUES ($1, $2, $3, false, $4, $5, $6)`,
+      [req.params.id, req.user.id, fullMessage, fileUrl, fileName, fileType]
     );
     
     await pool.query(
@@ -125,13 +188,31 @@ router.post('/:id/message', auth, async (req, res) => {
       [req.params.id]
     );
     
-    // Уведомляем менеджеров в Telegram о новом сообщении
+    // Уведомляем менеджеров в Telegram
     const ticket = ticketResult.rows[0];
-    telegramNotify.notifyTicketMessage(ticket, req.user, message, true).catch(err => {
+    const notifyMessage = file 
+      ? `${fullMessage}\n📎 Файл: ${fileName}` 
+      : fullMessage;
+    
+    telegramNotify.notifyTicketMessage(ticket, req.user, notifyMessage, true).catch(err => {
       console.error('Telegram notify error:', err.message);
     });
     
-    res.json({ success: true, message: 'Сообщение отправлено' });
+    // If file attached, also send file to Telegram managers
+    if (file) {
+      telegramNotify.sendFileToManagers(ticket, file, req.user).catch(err => {
+        console.error('Telegram file notify error:', err.message);
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Сообщение отправлено',
+      data: {
+        fileUrl,
+        fileName
+      }
+    });
   } catch (error) {
     console.error('Add message error:', error);
     res.status(500).json({ success: false, message: error.message });
