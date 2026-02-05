@@ -183,5 +183,50 @@ module.exports = {
       'DELETE FROM bot_conversations WHERE telegram_id = $1',
       [telegramId]
     );
+  },
+  
+  // ==================== STATISTICS ====================
+  
+  async getStats() {
+    const totalTickets = await pool.query('SELECT COUNT(*) as count FROM support_tickets');
+    const openTickets = await pool.query("SELECT COUNT(*) as count FROM support_tickets WHERE status = 'open'");
+    const assignedTickets = await pool.query("SELECT COUNT(*) as count FROM support_tickets WHERE status = 'assigned'");
+    const closedTickets = await pool.query("SELECT COUNT(*) as count FROM support_tickets WHERE status = 'closed'");
+    const totalManagers = await pool.query('SELECT COUNT(*) as count FROM support_managers WHERE is_active = true');
+    const onlineManagers = await pool.query('SELECT COUNT(*) as count FROM support_managers WHERE is_active = true AND is_online = true');
+    const totalConversations = await pool.query('SELECT COUNT(DISTINCT telegram_id) as count FROM bot_conversations');
+    
+    return {
+      totalTickets: parseInt(totalTickets.rows[0].count),
+      openTickets: parseInt(openTickets.rows[0].count),
+      assignedTickets: parseInt(assignedTickets.rows[0].count),
+      closedTickets: parseInt(closedTickets.rows[0].count),
+      totalManagers: parseInt(totalManagers.rows[0].count),
+      onlineManagers: parseInt(onlineManagers.rows[0].count),
+      totalConversations: parseInt(totalConversations.rows[0].count)
+    };
+  },
+  
+  // ==================== BROADCAST ====================
+  
+  async getAllBotUsers() {
+    const result = await pool.query(
+      'SELECT DISTINCT telegram_id FROM bot_conversations'
+    );
+    return result.rows.map(r => r.telegram_id);
+  },
+  
+  // ==================== ATOMIC TICKET ASSIGNMENT ====================
+  
+  async tryAssignTicket(ticketId, managerTelegramId) {
+    // Atomic operation - only assigns if status is still 'open'
+    const result = await pool.query(
+      `UPDATE support_tickets 
+       SET manager_telegram_id = $2, status = 'assigned', assigned_at = NOW()
+       WHERE id = $1 AND status = 'open'
+       RETURNING *`,
+      [ticketId, managerTelegramId]
+    );
+    return result.rows[0]; // Returns null if already taken
   }
 };

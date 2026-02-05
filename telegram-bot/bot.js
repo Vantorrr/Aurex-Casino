@@ -1,13 +1,14 @@
 require('dotenv').config();
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf, Markup, Input } = require('telegraf');
 const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 const db = require('./services/database');
 const ai = require('./services/ai');
 const keyboards = require('./keyboards');
 
-// Stefani avatar
-const STEFANI_PHOTO = 'https://raw.githubusercontent.com/Vantorrr/Aurex-Casino/main/telegram-bot/assets/stefani_aurex_support.png';
+// Stefani avatar - local file path
+const STEFANI_PHOTO_PATH = path.join(__dirname, 'assets', 'stefani_aurex_support.png');
 
 // ==================== INITIALIZE BOT ====================
 
@@ -78,12 +79,21 @@ bot.start(async (ctx) => {
 
   // Send Stefani photo with greeting
   try {
-    await ctx.replyWithPhoto(STEFANI_PHOTO, {
-      caption: greeting,
-      parse_mode: 'HTML',
-      ...keyboards.linksInline
-    });
+    if (fs.existsSync(STEFANI_PHOTO_PATH)) {
+      await ctx.replyWithPhoto(
+        { source: STEFANI_PHOTO_PATH },
+        {
+          caption: greeting,
+          parse_mode: 'HTML',
+          ...keyboards.linksInline
+        }
+      );
+    } else {
+      // Fallback to text if photo not found
+      await ctx.replyWithHTML(greeting, keyboards.linksInline);
+    }
   } catch (e) {
+    console.error('Photo send error:', e.message);
     // Fallback to text if photo fails
     await ctx.replyWithHTML(greeting, keyboards.linksInline);
   }
@@ -346,7 +356,7 @@ bot.hears('📜 Открытые тикеты', async (ctx) => {
   }
 });
 
-// Take ticket
+// Take ticket (ATOMIC - prevents double-take)
 bot.action(/take_ticket:(\d+)/, async (ctx) => {
   if (!await isManager(ctx)) {
     await ctx.answerCbQuery('Вы не менеджер');
@@ -354,20 +364,24 @@ bot.action(/take_ticket:(\d+)/, async (ctx) => {
   }
   
   const ticketId = parseInt(ctx.match[1]);
-  const ticket = await db.getTicketById(ticketId);
   
-  if (!ticket || ticket.status !== 'open') {
-    await ctx.answerCbQuery('Тикет уже взят или закрыт');
+  // ATOMIC: Only assigns if still open, returns null if already taken
+  const ticket = await db.tryAssignTicket(ticketId, ctx.from.id);
+  
+  if (!ticket) {
+    await ctx.answerCbQuery('❌ Тикет уже взят другим менеджером!');
+    try {
+      await ctx.editMessageText('❌ Этот тикет уже взят другим менеджером.');
+    } catch (e) {}
     return;
   }
   
-  await db.assignTicket(ticketId, ctx.from.id);
   await db.incrementManagerTickets(ctx.from.id);
   managerReplies.set(ctx.from.id, ticketId);
   
-  await ctx.answerCbQuery('Тикет назначен вам!');
+  await ctx.answerCbQuery('✅ Тикет ваш!');
   await ctx.editMessageText(
-    `✅ <b>Тикет #${ticket.ticket_number}</b> назначен вам.\n\nОтвечайте на это сообщение, чтобы отправить ответ пользователю.`,
+    `✅ <b>Тикет #${ticket.ticket_number}</b> назначен вам.\n\n👤 @${ticket.user_username || 'Unknown'}\n📝 ${ticket.subject || ''}\n\n<i>Просто напишите ответ — он уйдёт пользователю.</i>`,
     { parse_mode: 'HTML', ...keyboards.getActiveTicketActions(ticketId) }
   );
   
@@ -375,7 +389,7 @@ bot.action(/take_ticket:(\d+)/, async (ctx) => {
   try {
     await bot.telegram.sendMessage(
       ticket.user_telegram_id,
-      `✅ Оператор подключился к вашему тикету <b>#${ticket.ticket_number}</b>.\n\nНапишите ваш вопрос, и оператор ответит вам.`,
+      `✅ Оператор <b>${ctx.from.first_name}</b> подключился к вашему тикету <b>#${ticket.ticket_number}</b>.\n\nНапишите ваш вопрос!`,
       { parse_mode: 'HTML' }
     );
   } catch (e) {
@@ -423,10 +437,54 @@ bot.command('admin', async (ctx) => {
     return;
   }
   
-  await ctx.reply('👑 <b>Админ-панель AUREX</b>\n\nВыберите действие:', {
-    parse_mode: 'HTML',
-    ...keyboards.adminMenu
-  });
+  // Show stats immediately
+  const stats = await db.getStats();
+  
+  const text = `👑 <b>Админ-панель AUREX</b>
+
+📊 <b>Быстрая статистика:</b>
+• Тикетов всего: <b>${stats.totalTickets}</b>
+• Открытых: <b>${stats.openTickets}</b>
+• В работе: <b>${stats.assignedTickets}</b>
+• Менеджеров: <b>${stats.totalManagers}</b> (🟢 ${stats.onlineManagers} онлайн)
+• AI-диалогов: <b>${stats.totalConversations}</b>
+
+Выберите действие:`;
+  
+  await ctx.replyWithHTML(text, keyboards.adminMenu);
+});
+
+bot.hears('📊 Статистика', async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  
+  const stats = await db.getStats();
+  const managers = await db.getActiveManagers();
+  
+  let text = `📊 <b>Полная статистика AUREX Bot</b>
+
+<b>📋 Тикеты:</b>
+• Всего: ${stats.totalTickets}
+• 🟡 Открытых (ждут): ${stats.openTickets}
+• 🔵 В работе: ${stats.assignedTickets}
+• ✅ Закрытых: ${stats.closedTickets}
+
+<b>👥 Менеджеры:</b>
+• Всего активных: ${stats.totalManagers}
+• 🟢 Онлайн сейчас: ${stats.onlineManagers}
+
+<b>🤖 AI Стефани:</b>
+• Уникальных диалогов: ${stats.totalConversations}
+
+<b>👥 Топ менеджеров:</b>`;
+
+  const sortedManagers = managers.sort((a, b) => b.tickets_handled - a.tickets_handled).slice(0, 5);
+  for (let i = 0; i < sortedManagers.length; i++) {
+    const m = sortedManagers[i];
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+    text += `\n${medal} @${m.username || 'ID:' + m.telegram_id}: ${m.tickets_handled} тикетов`;
+  }
+  
+  await ctx.replyWithHTML(text);
 });
 
 bot.hears('👥 Менеджеры', async (ctx) => {
@@ -435,15 +493,17 @@ bot.hears('👥 Менеджеры', async (ctx) => {
   const managers = await db.getActiveManagers();
   
   if (managers.length === 0) {
-    await ctx.reply('📋 Нет активных менеджеров.');
+    await ctx.reply('📋 Нет активных менеджеров.\n\nНажми "➕ Добавить менеджера" чтобы добавить.');
     return;
   }
   
   let text = '👥 <b>Менеджеры поддержки:</b>\n\n';
   for (const m of managers) {
-    const status = m.is_online ? '🟢' : '🔴';
-    text += `${status} @${m.username || 'ID:' + m.telegram_id}\n`;
-    text += `   Тикетов: ${m.tickets_handled}\n\n`;
+    const status = m.is_online ? '🟢 ОНЛАЙН' : '🔴 офлайн';
+    text += `<b>@${m.username || 'ID:' + m.telegram_id}</b>\n`;
+    text += `   ${status}\n`;
+    text += `   📋 Тикетов обработано: ${m.tickets_handled}\n`;
+    text += `   🆔 ID: <code>${m.telegram_id}</code>\n\n`;
   }
   
   await ctx.replyWithHTML(text);
@@ -452,19 +512,73 @@ bot.hears('👥 Менеджеры', async (ctx) => {
 bot.hears('➕ Добавить менеджера', async (ctx) => {
   if (!isAdmin(ctx)) return;
   userState.set(ctx.from.id, { state: 'awaiting_manager_add' });
-  await ctx.reply('Перешлите мне сообщение от пользователя, которого хотите назначить менеджером.\n\nИли отправьте его Telegram ID.');
+  await ctx.reply(`➕ <b>Добавление менеджера</b>
+
+Два способа:
+1️⃣ Перешли мне любое сообщение от человека
+2️⃣ Отправь его Telegram ID (число)
+
+<i>Человек получит уведомление и доступ к /manager</i>`, { parse_mode: 'HTML' });
 });
 
 bot.hears('➖ Удалить менеджера', async (ctx) => {
   if (!isAdmin(ctx)) return;
+  
+  const managers = await db.getActiveManagers();
+  if (managers.length === 0) {
+    await ctx.reply('Нет менеджеров для удаления.');
+    return;
+  }
+  
+  let text = '➖ <b>Удаление менеджера</b>\n\nОтправь Telegram ID менеджера:\n\n';
+  for (const m of managers) {
+    text += `• @${m.username || 'Unknown'} — <code>${m.telegram_id}</code>\n`;
+  }
+  
   userState.set(ctx.from.id, { state: 'awaiting_manager_remove' });
-  await ctx.reply('Перешлите мне сообщение менеджера или отправьте его Telegram ID.');
+  await ctx.replyWithHTML(text);
+});
+
+bot.hears('📢 Рассылка', async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  userState.set(ctx.from.id, { state: 'awaiting_broadcast_message' });
+  await ctx.reply(`📢 <b>Рассылка всем пользователям</b>
+
+Напиши сообщение, которое получат все пользователи бота.
+
+<i>Поддерживается HTML-разметка:
+&lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href="url"&gt;ссылка&lt;/a&gt;</i>
+
+Отправь /cancel для отмены.`, { parse_mode: 'HTML' });
+});
+
+bot.hears('📋 Все тикеты', async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  
+  const openTickets = await db.getOpenTickets();
+  
+  if (openTickets.length === 0) {
+    await ctx.reply('✅ Нет открытых тикетов.');
+    return;
+  }
+  
+  await ctx.reply(`📋 <b>Открытые тикеты (${openTickets.length}):</b>`, { parse_mode: 'HTML' });
+  
+  for (const t of openTickets) {
+    const text = `🆕 <b>#${t.ticket_number}</b>\n👤 @${t.user_username || 'Unknown'}\n📝 ${t.subject?.substring(0, 100) || 'Без темы'}`;
+    await ctx.replyWithHTML(text, keyboards.getTicketActions(t.id));
+  }
 });
 
 bot.hears('🔙 Выход из админки', async (ctx) => {
   if (!isAdmin(ctx)) return;
   userState.delete(ctx.from.id);
   await ctx.reply('👋 Вы вышли из админки.', keyboards.mainMenu);
+});
+
+bot.command('cancel', async (ctx) => {
+  userState.delete(ctx.from.id);
+  await ctx.reply('❌ Действие отменено.');
 });
 
 // ==================== PHOTO HANDLER (for deposit screenshots) ====================
@@ -574,6 +688,33 @@ bot.on('message', async (ctx) => {
   const text = ctx.message.text;
   const userId = ctx.from.id;
   const state = userState.get(userId);
+  
+  // ===== Broadcast message =====
+  if (state?.state === 'awaiting_broadcast_message' && isAdmin(ctx)) {
+    userState.delete(userId);
+    
+    const users = await db.getAllBotUsers();
+    let sent = 0;
+    let failed = 0;
+    
+    await ctx.reply(`📢 Начинаю рассылку на ${users.length} пользователей...`);
+    
+    for (const userTgId of users) {
+      try {
+        await bot.telegram.sendMessage(userTgId, text, { parse_mode: 'HTML' });
+        sent++;
+      } catch (e) {
+        failed++;
+      }
+      // Небольшая задержка чтобы не словить rate limit
+      if (sent % 25 === 0) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+    
+    await ctx.reply(`✅ <b>Рассылка завершена!</b>\n\n📤 Доставлено: ${sent}\n❌ Ошибок: ${failed}`, { parse_mode: 'HTML' });
+    return;
+  }
   
   // ===== Admin adding manager =====
   if (state?.state === 'awaiting_manager_add' && isAdmin(ctx)) {
