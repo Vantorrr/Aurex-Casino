@@ -185,6 +185,71 @@ module.exports = {
     );
   },
   
+  // ==================== ACCOUNT LINKING ====================
+  
+  async linkAccountByCode(telegramId, code) {
+    // Find valid code
+    const codeResult = await pool.query(
+      `SELECT user_id FROM telegram_link_codes 
+       WHERE code = $1 AND expires_at > NOW()`,
+      [code]
+    );
+    
+    if (codeResult.rows.length === 0) {
+      return { success: false, error: 'Код недействителен или истёк' };
+    }
+    
+    const userId = codeResult.rows[0].user_id;
+    
+    // Check if telegram already linked to another account
+    const existingLink = await pool.query(
+      'SELECT id FROM users WHERE telegram_id = $1 AND id != $2',
+      [telegramId, userId]
+    );
+    
+    if (existingLink.rows.length > 0) {
+      return { success: false, error: 'Этот Telegram уже привязан к другому аккаунту' };
+    }
+    
+    // Link account
+    await pool.query(
+      'UPDATE users SET telegram_id = $1 WHERE id = $2',
+      [telegramId, userId]
+    );
+    
+    // Delete used code
+    await pool.query(
+      'DELETE FROM telegram_link_codes WHERE user_id = $1',
+      [userId]
+    );
+    
+    // Get user info
+    const userResult = await pool.query(
+      'SELECT username, email FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    return { 
+      success: true, 
+      user: userResult.rows[0]
+    };
+  },
+  
+  async getLinkedUser(telegramId) {
+    const result = await pool.query(
+      'SELECT id, username, email, balance, bonus_balance, vip_level FROM users WHERE telegram_id = $1',
+      [telegramId]
+    );
+    return result.rows[0];
+  },
+  
+  async unlinkAccount(telegramId) {
+    await pool.query(
+      'UPDATE users SET telegram_id = NULL WHERE telegram_id = $1',
+      [telegramId]
+    );
+  },
+  
   // ==================== STATISTICS ====================
   
   async getStats() {

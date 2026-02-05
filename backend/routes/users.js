@@ -285,4 +285,71 @@ router.get('/bonuses', auth, async (req, res) => {
   }
 });
 
+// ============ TELEGRAM INTEGRATION ============
+
+// Получить код для привязки Telegram
+router.get('/telegram/link-code', auth, async (req, res) => {
+  try {
+    // Генерируем уникальный код привязки (действует 10 минут)
+    const crypto = require('crypto');
+    const linkCode = crypto.randomBytes(16).toString('hex');
+    
+    // Сохраняем код в БД с истечением
+    await pool.query(
+      `INSERT INTO telegram_link_codes (user_id, code, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '10 minutes')
+       ON CONFLICT (user_id) DO UPDATE SET code = $2, expires_at = NOW() + INTERVAL '10 minutes'`,
+      [req.user.id, linkCode]
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        code: linkCode,
+        botUsername: 'aurex_support_bot',
+        expiresIn: 600 // секунд
+      }
+    });
+  } catch (error) {
+    console.error('Generate link code error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Проверить статус привязки Telegram
+router.get('/telegram/status', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT telegram_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        linked: !!result.rows[0]?.telegram_id,
+        telegramId: result.rows[0]?.telegram_id || null
+      }
+    });
+  } catch (error) {
+    console.error('Check telegram status error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Отвязать Telegram
+router.delete('/telegram/unlink', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE users SET telegram_id = NULL WHERE id = $1',
+      [req.user.id]
+    );
+    
+    res.json({ success: true, message: 'Telegram отвязан' });
+  } catch (error) {
+    console.error('Unlink telegram error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

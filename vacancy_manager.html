@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUREX CASINO - Project Manager / COO Vacancy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-card: #141414;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --gold-main: #d4af37;
+            --gold-hover: #f3ce5e;
+            --gold-gradient: linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%);
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 50px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 60px 0 40px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Sections */
+        .section-title {
+            color: var(--gold-main);
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.5), transparent);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-color: rgba(212, 175, 55, 0.3);
+        }
+
+        .role-badge {
+            display: inline-block;
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--gold-main);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: white;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        li {
+            margin-bottom: 12px;
+            padding-left: 25px;
+            position: relative;
+            color: #e0e0e0;
+        }
+
+        li::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: var(--gold-main);
+        }
+
+        .highlight {
+            color: var(--gold-main);
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--gold-gradient);
+            color: #000;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-weight: 800;
+            text-decoration: none;
+            margin-top: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .logo { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo">AUREX</div>
+        <div class="subtitle">Head of iGaming Operations / Project Lead</div>
+    </header>
+
+    <!-- Введение -->
+    <div class="card">
+        <p style="font-size: 1.1rem;">
+            Мы ищем <strong>Ключевого Менеджера (COO)</strong>, который возьмет на себя полное операционное управление запуском и развитием онлайн-казино. Твоя задача — превратить код в работающий бизнес. Ты будешь отвечать за юридическую часть, финансы, маркетинг и команду.
+        </p>
+    </div>
+
+    <!-- ЭТАП 1 -->
+    <h2 class="section-title">ЭТАП 1: ЗАПУСК (SETUP)</h2>
+    
+    <div class="card">
+        <span class="role-badge">Юридическая часть & Лицензирование</span>
+        <h3>1. Получение Лицензии</h3>
+        <ul>
+            <li>Выбор юрисдикции: <span class="highlight">Curacao (GCB/Antillephone)</span>, Anjouan или Kahnawake.</li>
+            <li>Регистрация юридического лица (оффшор + платежный агент в ЕС/Кипре).</li>
+            <li>Подготовка всех документов для валидации домена.</li>
+            <li>Настройка политики KYC/AML и Responsible Gaming на сайте.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <span class="role-badge">Финансы & Платежи (High Risk)</span>
+        <h3>2. Подключение Платежных Шлюзов (PSP)</h3>
+        <ul>
+            <li>Поиск и интеграция провайдеров для приема карт (Visa/MC) — P2P и эквайринг.</li>
+            <li>Настройка крипто-процессинга (USDT, BTC, ETH).</li>
+            <li>Подключение методов для выплат (Payouts) игрокам.</li>
+            <li>Заключение договоров с агрегаторами платежей (для РФ, СНГ, Европы).</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <span class="role-badge">Продукт & Игры</span>
+        <h3>3. Интеграция Игр и Сервисов</h3>
+        <ul>
+            <li>Заключение договора с <strong>Агрегатором Игр</strong> (SoftSwiss, Slotegrator, BetConstruct или напрямую).</li>
+            <li>Регистрация и оплата сервисов для <strong>SMS-рассылок</strong> (Twilio, SMS-центры) для кодов подтверждения.</li>
+            <li>Настройка <strong>Email-шлюзов</strong> (SendGrid, Mailgun) для транзакционных писем.</li>
+            <li>Покупка и настройка доменов, SSL, защиты от DDoS (Cloudflare).</li>
+        </ul>
+    </div>
+
+    <!-- ЭТАП 2 -->
+    <h2 class="section-title">ЭТАП 2: ОПЕРАЦИОНКА (RUN)</h2>
+
+    <div class="card">
+        <span class="role-badge">Маркетинг & Трафик</span>
+        <h3>4. Привлечение Игроков (Traffic)</h3>
+        <ul>
+            <li>Поиск и переговоры с <strong>Блогерами / Стримерами</strong> (YouTube, Twitch, Kick).</li>
+            <li>Работа с CPA-сетями и арбитражными командами.</li>
+            <li>Закупка рекламы (Telegram каналы, SEO, ASO).</li>
+            <li>Разработка бонусной политики (Welcome бонусы, кэшбэк) для удержания.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <span class="role-badge">Команда & Поддержка</span>
+        <h3>5. Управление Персоналом</h3>
+        <ul>
+            <li>Найм и обучение <strong>Саппорта (Support Team)</strong> — 24/7 чат и тикеты.</li>
+            <li>Найм KYC-менеджеров для проверки документов и вывода средств.</li>
+            <li>Контроль качества ответов поддержки.</li>
+            <li>Составление скриптов общения с клиентами.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <span class="role-badge">Финансы & Расходы</span>
+        <h3>6. Ежемесячные Платежи и Контроль</h3>
+        <ul>
+            <li>Оплата серверов, доменов и инфраструктуры.</li>
+            <li>Пополнение балансов SMS и Email шлюзов.</li>
+            <li>Расчеты с провайдерами игр (GGR share).</li>
+            <li>Сверка балансов (Reconciliation) с платежными системами.</li>
+            <li>Выплаты партнерам и аффилиатам.</li>
+        </ul>
+    </div>
+
+    <!-- ТРЕБОВАНИЯ -->
+    <h2 class="section-title">ТРЕБОВАНИЯ К КАНДИДАТУ</h2>
+    <div class="card" style="border-color: var(--gold-main);">
+        <ul>
+            <li>Опыт работы в iGaming / Gambling / Betting от 2 лет.</li>
+            <li>Понимание рынка <strong>High Risk</strong> платежей (как работают мис-кодинг, P2P, каскады).</li>
+            <li>Опыт работы с партнерскими программами и закупкой трафика.</li>
+            <li>Английский язык (B2+) для общения с зарубежными провайдерами и регуляторами.</li>
+            <li>Умение решать кризисные ситуации (блокировки доменов, отвалы платежек).</li>
+            <li>Честность и прозрачность в финансах.</li>
+        </ul>
+    </div>
+
+    <!-- УСЛОВИЯ -->
+    <h2 class="section-title">УСЛОВИЯ И МОТИВАЦИЯ</h2>
+    <div class="card" style="background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(30, 30, 30, 0.9) 100%); border: 1px solid var(--gold-main);">
+        <span class="role-badge" style="background: var(--gold-main); color: #000;">Offer</span>
+        <h3>Фикс + % от NGR (Net Gaming Revenue)</h3>
+        <p style="margin-bottom: 20px; color: #ccc;">Мы предлагаем прозрачную модель: твоя зарплата напрямую зависит от успеха казино. Чем больше качественного трафика и активных игроков — тем больше твой доход.</p>
+        
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;">Базовая ставка (Fix)</div>
+                <div style="font-size: 1.8rem; font-weight: 800; color: white;">$2,500 - $3,500</div>
+                <div style="font-size: 0.8rem; color: #888;">в месяц</div>
+            </div>
+            <div style="flex: 1; min-width: 200px; background: rgba(212, 175, 55, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--gold-main);">
+                <div style="font-size: 0.9rem; color: var(--gold-main); margin-bottom: 5px;">Бонус (Revenue Share)</div>
+                <div style="font-size: 1.8rem; font-weight: 800; color: var(--gold-main);">3% - 5%</div>
+                <div style="font-size: 0.8rem; color: #d4af37;">от NGR ежемесячно</div>
+            </div>
+        </div>
+
+        <ul>
+            <li><strong>NGR (Net Gaming Revenue)</strong> = Ставки - Выигрыши - Бонусы - Налоги провайдеров.</li>
+            <li>Прозрачная отчетность: ты видишь все цифры в админке.</li>
+            <li>Выплаты в USDT (TRC20) или на карту.</li>
+            <li>Испытательный срок: 1 месяц (оплачиваемый).</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2026 AUREX CASINO. CONFIDENTIAL.</p>
+    </div>
+</div>
+
+</body>
+</html>

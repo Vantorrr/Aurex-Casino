@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const { auth, adminAuth } = require('../middleware/auth');
+const telegramNotify = require('../services/telegramNotify');
 
 // ============ USER ROUTES ============
 
@@ -47,6 +48,11 @@ router.post('/', auth, async (req, res) => {
        VALUES ($1, $2, $3, false)`,
       [ticket.id, req.user.id, message]
     );
+    
+    // Уведомляем менеджеров в Telegram
+    telegramNotify.notifyNewTicket(ticket, req.user).catch(err => {
+      console.error('Telegram notify error:', err.message);
+    });
     
     res.json({ success: true, message: 'Тикет создан', data: ticket });
   } catch (error) {
@@ -118,6 +124,12 @@ router.post('/:id/message', auth, async (req, res) => {
       'UPDATE tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [req.params.id]
     );
+    
+    // Уведомляем менеджеров в Telegram о новом сообщении
+    const ticket = ticketResult.rows[0];
+    telegramNotify.notifyTicketMessage(ticket, req.user, message, true).catch(err => {
+      console.error('Telegram notify error:', err.message);
+    });
     
     res.json({ success: true, message: 'Сообщение отправлено' });
   } catch (error) {
@@ -233,6 +245,16 @@ router.post('/admin/:id/reply', adminAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Сообщение обязательно' });
     }
     
+    // Получаем информацию о тикете для уведомления пользователя
+    const ticketInfo = await pool.query(
+      'SELECT user_id FROM tickets WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (ticketInfo.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Тикет не найден' });
+    }
+    
     // Добавляем ответ
     await pool.query(
       `INSERT INTO ticket_messages (ticket_id, user_id, message, is_staff)
@@ -245,6 +267,12 @@ router.post('/admin/:id/reply', adminAuth, async (req, res) => {
       `UPDATE tickets SET status = 'in_progress', assigned_to = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
       [req.user.id, req.params.id]
     );
+    
+    // Уведомляем пользователя в Telegram (если привязан)
+    const userId = ticketInfo.rows[0].user_id;
+    telegramNotify.notifyUserReply(userId, req.params.id, message).catch(err => {
+      console.error('Telegram user notify error:', err.message);
+    });
     
     res.json({ success: true, message: 'Ответ отправлен' });
   } catch (error) {

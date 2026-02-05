@@ -1,0 +1,171 @@
+/**
+ * Telegram Notification Service
+ * Отправляет уведомления о тикетах менеджерам в Telegram бота
+ */
+
+const axios = require('axios');
+const pool = require('../config/database');
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+class TelegramNotifyService {
+  
+  /**
+   * Отправить сообщение пользователю
+   */
+  async sendMessage(chatId, text, options = {}) {
+    if (!BOT_TOKEN) {
+      console.warn('TELEGRAM_BOT_TOKEN not set, skipping notification');
+      return null;
+    }
+    
+    try {
+      const response = await axios.post(`${TELEGRAM_API}/sendMessage`, {
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'HTML',
+        ...options
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Telegram send error:', error.response?.data || error.message);
+      return null;
+    }
+  }
+  
+  /**
+   * Получить всех активных менеджеров из БД
+   */
+  async getActiveManagers() {
+    try {
+      const result = await pool.query(
+        'SELECT telegram_id FROM support_managers WHERE is_active = true'
+      );
+      return result.rows.map(r => r.telegram_id);
+    } catch (error) {
+      console.error('Get managers error:', error.message);
+      return [];
+    }
+  }
+  
+  /**
+   * Уведомить всех менеджеров о новом тикете с сайта
+   */
+  async notifyNewTicket(ticket, user) {
+    const managers = await this.getActiveManagers();
+    
+    if (managers.length === 0) {
+      console.warn('No active managers to notify');
+      return;
+    }
+    
+    const priorityEmoji = {
+      urgent: '🔴 СРОЧНО',
+      high: '🟠 Высокий',
+      medium: '🟡 Средний',
+      low: '🟢 Низкий'
+    };
+    
+    const categoryNames = {
+      deposit: '💰 Депозит',
+      withdraw: '💳 Вывод',
+      bonus: '🎁 Бонусы',
+      technical: '🔧 Технический',
+      verification: '📄 Верификация',
+      general: '💬 Общий'
+    };
+    
+    const message = `🌐 <b>Новый тикет с сайта!</b>
+
+📋 <b>#${ticket.id}</b>
+👤 ${user.username || user.email} (ID: ${user.id})
+📧 ${user.email}
+
+${priorityEmoji[ticket.priority] || '🟡'} | ${categoryNames[ticket.category] || ticket.category}
+
+<b>Тема:</b> ${this.escapeHtml(ticket.subject)}
+
+<b>Сообщение:</b>
+${this.escapeHtml(ticket.message?.substring(0, 500) || '')}${ticket.message?.length > 500 ? '...' : ''}
+
+<i>Ответьте через админ-панель сайта или через /manager в боте</i>`;
+
+    const keyboard = {
+      inline_keyboard: [[
+        { text: '📋 Открыть в админке', url: `${process.env.FRONTEND_URL}/admin/tickets/${ticket.id}` }
+      ]]
+    };
+    
+    for (const managerId of managers) {
+      await this.sendMessage(managerId, message, { reply_markup: keyboard });
+    }
+    
+    console.log(`Notified ${managers.length} managers about ticket #${ticket.id}`);
+  }
+  
+  /**
+   * Уведомить о новом сообщении в тикете
+   */
+  async notifyTicketMessage(ticket, user, messageText, isFromUser = true) {
+    if (!isFromUser) return; // Не уведомляем о сообщениях от менеджеров
+    
+    const managers = await this.getActiveManagers();
+    
+    const message = `💬 <b>Новое сообщение в тикете #${ticket.id}</b>
+
+👤 ${user.username || user.email}
+<b>Тема:</b> ${this.escapeHtml(ticket.subject)}
+
+<b>Сообщение:</b>
+${this.escapeHtml(messageText?.substring(0, 500) || '')}`;
+
+    for (const managerId of managers) {
+      await this.sendMessage(managerId, message);
+    }
+  }
+  
+  /**
+   * Уведомить пользователя об ответе на тикет (если есть telegram_id)
+   */
+  async notifyUserReply(userId, ticketId, replyText) {
+    try {
+      // Проверяем есть ли у пользователя привязанный Telegram
+      const result = await pool.query(
+        'SELECT telegram_id FROM users WHERE id = $1 AND telegram_id IS NOT NULL',
+        [userId]
+      );
+      
+      if (result.rows.length === 0 || !result.rows[0].telegram_id) {
+        return; // У пользователя нет привязанного Telegram
+      }
+      
+      const telegramId = result.rows[0].telegram_id;
+      
+      const message = `📩 <b>Ответ на ваш тикет #${ticketId}</b>
+
+<b>Оператор:</b>
+${this.escapeHtml(replyText)}
+
+<i>Ответить можно на сайте в разделе "Поддержка"</i>`;
+
+      await this.sendMessage(telegramId, message);
+      
+    } catch (error) {
+      console.error('Notify user reply error:', error.message);
+    }
+  }
+  
+  /**
+   * Escape HTML для безопасной отправки
+   */
+  escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+}
+
+module.exports = new TelegramNotifyService();

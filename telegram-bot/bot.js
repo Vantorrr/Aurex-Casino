@@ -278,6 +278,84 @@ bot.hears('🔄 Новый диалог', async (ctx) => {
   await ctx.reply('🔄 История диалога очищена. Можете начать новый разговор!');
 });
 
+// ==================== ACCOUNT LINKING ====================
+
+bot.hears('🔗 Привязать аккаунт', async (ctx) => {
+  // Check if already linked
+  const linkedUser = await db.getLinkedUser(ctx.from.id);
+  
+  if (linkedUser) {
+    await ctx.reply(`✅ <b>Аккаунт уже привязан!</b>
+
+👤 <b>${linkedUser.username}</b>
+📧 ${linkedUser.email}
+💰 Баланс: ${parseFloat(linkedUser.balance).toLocaleString()} ₽
+🎁 Бонусы: ${parseFloat(linkedUser.bonus_balance).toLocaleString()} ₽
+⭐️ VIP: Level ${linkedUser.vip_level}
+
+Теперь ты будешь получать уведомления о:
+• Ответах на тикеты
+• Статусе выводов
+• Бонусах и акциях
+
+<i>Чтобы отвязать аккаунт, напиши /unlink</i>`, { parse_mode: 'HTML' });
+    return;
+  }
+  
+  userState.set(ctx.from.id, { state: 'awaiting_link_code' });
+  
+  await ctx.reply(`🔗 <b>Привязка аккаунта AUREX</b>
+
+Чтобы получать уведомления о тикетах и выводах прямо в Telegram:
+
+1️⃣ Зайди на сайт → Профиль → Настройки
+2️⃣ Нажми "Привязать Telegram"
+3️⃣ Скопируй код и отправь его сюда
+
+<i>Код действует 10 минут</i>
+
+🌐 <a href="${config.websiteUrl}">Перейти на сайт</a>`, { 
+    parse_mode: 'HTML',
+    disable_web_page_preview: true 
+  });
+});
+
+bot.command('unlink', async (ctx) => {
+  const linkedUser = await db.getLinkedUser(ctx.from.id);
+  
+  if (!linkedUser) {
+    await ctx.reply('❌ Аккаунт не привязан.');
+    return;
+  }
+  
+  await db.unlinkAccount(ctx.from.id);
+  await ctx.reply(`✅ Аккаунт <b>${linkedUser.username}</b> отвязан от Telegram.
+
+Ты больше не будешь получать уведомления.`, { parse_mode: 'HTML' });
+});
+
+bot.command('account', async (ctx) => {
+  const linkedUser = await db.getLinkedUser(ctx.from.id);
+  
+  if (!linkedUser) {
+    await ctx.reply('❌ Аккаунт не привязан. Нажми "🔗 Привязать аккаунт"');
+    return;
+  }
+  
+  await ctx.reply(`👤 <b>Твой аккаунт AUREX</b>
+
+🆔 ${linkedUser.username}
+📧 ${linkedUser.email}
+💰 Баланс: <b>${parseFloat(linkedUser.balance).toLocaleString()} ₽</b>
+🎁 Бонусы: <b>${parseFloat(linkedUser.bonus_balance).toLocaleString()} ₽</b>
+⭐️ VIP Level: ${linkedUser.vip_level}
+
+🌐 <a href="${config.websiteUrl}">Перейти на сайт</a>`, { 
+    parse_mode: 'HTML',
+    disable_web_page_preview: true 
+  });
+});
+
 // ==================== DEPOSIT NOT RECEIVED ====================
 
 bot.hears('⚠️ Депозит не пришёл', async (ctx) => {
@@ -688,6 +766,40 @@ bot.on('message', async (ctx) => {
   const text = ctx.message.text;
   const userId = ctx.from.id;
   const state = userState.get(userId);
+  
+  // ===== Account linking code =====
+  if (state?.state === 'awaiting_link_code') {
+    const code = text.trim();
+    
+    if (code.length < 10) {
+      await ctx.reply('❌ Неверный формат кода. Скопируй код полностью с сайта.');
+      return;
+    }
+    
+    const result = await db.linkAccountByCode(ctx.from.id, code);
+    userState.delete(userId);
+    
+    if (result.success) {
+      await ctx.reply(`✅ <b>Аккаунт успешно привязан!</b>
+
+👤 ${result.user.username}
+📧 ${result.user.email}
+
+Теперь ты будешь получать уведомления о:
+• Ответах на тикеты поддержки
+• Статусе выводов
+• Персональных бонусах
+
+Напиши /account чтобы посмотреть баланс.`, { parse_mode: 'HTML' });
+    } else {
+      await ctx.reply(`❌ <b>Ошибка привязки</b>
+
+${result.error}
+
+Попробуй получить новый код на сайте.`, { parse_mode: 'HTML' });
+    }
+    return;
+  }
   
   // ===== Broadcast message =====
   if (state?.state === 'awaiting_broadcast_message' && isAdmin(ctx)) {
