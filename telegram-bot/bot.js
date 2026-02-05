@@ -1,9 +1,13 @@
 require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
+const path = require('path');
 const config = require('./config');
 const db = require('./services/database');
 const ai = require('./services/ai');
 const keyboards = require('./keyboards');
+
+// Stefani avatar
+const STEFANI_PHOTO = 'https://raw.githubusercontent.com/Vantorrr/Aurex-Casino/main/telegram-bot/assets/stefani_aurex_support.png';
 
 // ==================== INITIALIZE BOT ====================
 
@@ -61,9 +65,7 @@ bot.start(async (ctx) => {
 Например:
 • <i>"Как пополнить счёт?"</i>
 • <i>"Какие бонусы есть?"</i>
-• <i>"Не пришёл депозит"</i>
-
-Или выбери готовый вопрос из меню ниже 👇`;
+• <i>"Не пришёл депозит"</i>`;
 
   // Только для менеджеров и админов - скрытое меню
   if (isUserManager && !isUserAdmin) {
@@ -74,7 +76,18 @@ bot.start(async (ctx) => {
     greeting += `\n\n👑 /admin — управление`;
   }
 
-  await ctx.replyWithHTML(greeting, keyboards.linksInline);
+  // Send Stefani photo with greeting
+  try {
+    await ctx.replyWithPhoto(STEFANI_PHOTO, {
+      caption: greeting,
+      parse_mode: 'HTML',
+      ...keyboards.linksInline
+    });
+  } catch (e) {
+    // Fallback to text if photo fails
+    await ctx.replyWithHTML(greeting, keyboards.linksInline);
+  }
+  
   await ctx.reply('Меню:', keyboards.mainMenu);
 });
 
