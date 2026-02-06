@@ -28,8 +28,14 @@ ADMIN_IDS.forEach(id => {
 // =============================================
 
 function getUserName(user) {
-  if (user.username) return `@${user.username}`;
-  return user.first_name || 'Участник';
+  if (user.username) return `@${escMd(user.username)}`;
+  return escMd(user.first_name || 'Участник');
+}
+
+/** Экранируем символы Markdown: _ * [ ] ( ) ~ ` > # + - = | { } . ! */
+function escMd(text) {
+  if (!text) return '';
+  return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 function formatTickets(count) {
@@ -471,7 +477,7 @@ bot.hears('🏆 ТОП участников', subscriptionGuard, (ctx) => {
 
   top.forEach((t, i) => {
     const medal = medals[i] || `${i + 1}.`;
-    const name = t.username ? `@${t.username}` : t.first_name;
+    const name = t.username ? `@${escMd(t.username)}` : escMd(t.first_name);
     text += `${medal} ${name} — *${t.tickets}* 🎫 (${t.referrals} друзей)\n`;
   });
 
@@ -519,7 +525,7 @@ bot.hears('📜 История билетов', subscriptionGuard, (ctx) => {
 
   history.forEach(h => {
     const reason = reasonNames[h.reason] || h.reason;
-    const relatedName = h.related_username ? ` (@${h.related_username})` : (h.related_first_name ? ` (${h.related_first_name})` : '');
+    const relatedName = h.related_username ? ` (@${escMd(h.related_username)})` : (h.related_first_name ? ` (${escMd(h.related_first_name)})` : '');
     const date = new Date(h.created_at).toLocaleDateString('ru-RU');
     text += `${reason} → *+${h.amount}* 🎫${relatedName} _(${date})_\n`;
   });
@@ -839,35 +845,40 @@ bot.hears('👑 Админ-панель', (ctx) => {
 });
 
 // Статистика
-bot.action('admin_stats', (ctx) => {
+bot.action('admin_stats', async (ctx) => {
   if (!isAdmin(ctx)) return ctx.answerCbQuery('Нет доступа');
 
-  const stats = giveaway.getStats();
-  const db = require('./database');
-  const subscribedCount = db.prepare(`SELECT COUNT(*) as c FROM users WHERE joined_channel = 1`).get().c;
-  ctx.answerCbQuery();
+  try {
+    const stats = giveaway.getStats();
+    const db = require('./database');
+    const subscribedCount = db.prepare(`SELECT COUNT(*) as c FROM users WHERE joined_channel = 1`).get().c;
+    ctx.answerCbQuery();
 
-  let text = `📊 *СТАТИСТИКА*\n\n` +
-    `👥 Всего пользователей: *${stats.totalUsers}*\n` +
-    `✅ Подписаны на канал: *${subscribedCount}*\n` +
-    `🎫 Всего билетов выдано: *${stats.totalTickets}*\n`;
+    let text = `📊 <b>СТАТИСТИКА</b>\n\n` +
+      `👥 Всего пользователей: <b>${stats.totalUsers}</b>\n` +
+      `✅ Подписаны на канал: <b>${subscribedCount}</b>\n` +
+      `🎫 Всего билетов выдано: <b>${stats.totalTickets}</b>\n`;
 
-  if (stats.activeGiveaway) {
-    text += `\n🎁 Активный розыгрыш: *${stats.activeGiveaway.title}*\n`;
-    text += `👥 Участников: *${stats.activeParticipants}*\n`;
-  } else {
-    text += `\n🎁 Нет активных розыгрышей\n`;
+    if (stats.activeGiveaway) {
+      text += `\n🎁 Активный розыгрыш: <b>${stats.activeGiveaway.title}</b>\n`;
+      text += `👥 Участников: <b>${stats.activeParticipants}</b>\n`;
+    } else {
+      text += `\n🎁 Нет активных розыгрышей\n`;
+    }
+
+    if (stats.topReferrers.length > 0) {
+      text += `\n🏆 <b>ТОП рефереров:</b>\n`;
+      stats.topReferrers.slice(0, 5).forEach((t, i) => {
+        const name = t.username ? `@${t.username}` : (t.first_name || 'User');
+        text += `${i + 1}. ${name} — ${t.referrals} друзей, ${t.tickets} 🎫\n`;
+      });
+    }
+
+    await ctx.reply(text, { parse_mode: 'HTML' });
+  } catch (e) {
+    console.error('Stats error:', e.message);
+    ctx.reply('❌ Ошибка загрузки статистики: ' + e.message);
   }
-
-  if (stats.topReferrers.length > 0) {
-    text += `\n🏆 *ТОП рефереров:*\n`;
-    stats.topReferrers.slice(0, 5).forEach((t, i) => {
-      const name = t.username ? `@${t.username}` : t.first_name;
-      text += `${i + 1}. ${name} — ${t.referrals} друзей, ${t.tickets} 🎫\n`;
-    });
-  }
-
-  ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
 // Создание розыгрыша
@@ -1001,7 +1012,7 @@ bot.command('pickwinners', async (ctx) => {
 
   for (let i = 0; i < winners.length; i++) {
     const w = winners[i];
-    const name = w.username ? `@${w.username}` : w.first_name;
+    const name = w.username ? `@${escMd(w.username)}` : escMd(w.first_name);
     const prize = prizes[i] || 'Утешительный приз';
     text += `${medals[i] || '🎁'} *${prize}*\n`;
     text += `└ ${name} (${w.tickets} 🎫)\n\n`;
@@ -1050,7 +1061,7 @@ bot.command('broadcast', async (ctx) => {
 
   for (const u of users) {
     try {
-      await ctx.telegram.sendMessage(u.telegram_id, text, { parse_mode: 'Markdown' });
+      await ctx.telegram.sendMessage(u.telegram_id, text);
       sent++;
     } catch (e) {
       failed++;
@@ -1122,8 +1133,24 @@ server.listen(PORT, () => {
 // ЗАПУСК
 // =============================================
 
-bot.catch((err) => {
+bot.catch((err, ctx) => {
   console.error('❌ Bot error:', err.message);
+  // НЕ крашим бот — просто логируем
+  if (ctx) {
+    ctx.reply('⚠️ Произошла ошибка, попробуйте ещё раз.').catch(() => {});
+  }
+});
+
+// Глобальная защита от крашей
+process.on('uncaughtException', (err) => {
+  console.error('💀 Uncaught Exception:', err.message);
+  console.error(err.stack);
+  // НЕ завершаем процесс — бот продолжает работать
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('💀 Unhandled Rejection:', err.message || err);
+  // НЕ завершаем процесс — бот продолжает работать
 });
 
 bot.launch()
