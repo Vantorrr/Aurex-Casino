@@ -82,10 +82,10 @@ export default function TournamentsPage() {
             game: t.game || 'Все слоты',
             gameIcon: t.type === 'vip' ? '👑' : '🎰',
             prizes: t.prizes || [
-              { position: '1', prize: `₽${(t.prizePool * 0.4).toLocaleString('ru-RU')}`, icon: <Crown className="w-5 h-5 text-aurex-gold-500" /> },
-              { position: '2', prize: `₽${(t.prizePool * 0.25).toLocaleString('ru-RU')}`, icon: <Medal className="w-5 h-5 text-gray-300" /> },
-              { position: '3', prize: `₽${(t.prizePool * 0.15).toLocaleString('ru-RU')}`, icon: <Medal className="w-5 h-5 text-amber-600" /> },
-              { position: '4-10', prize: `₽${(t.prizePool * 0.02).toLocaleString('ru-RU')}` },
+              { position: '1', prize: `₽${((t.prizePool || 0) * 0.4).toLocaleString('ru-RU')}`, icon: <Crown className="w-5 h-5 text-aurex-gold-500" /> },
+              { position: '2', prize: `₽${((t.prizePool || 0) * 0.25).toLocaleString('ru-RU')}`, icon: <Medal className="w-5 h-5 text-gray-300" /> },
+              { position: '3', prize: `₽${((t.prizePool || 0) * 0.15).toLocaleString('ru-RU')}`, icon: <Medal className="w-5 h-5 text-amber-600" /> },
+              { position: '4-10', prize: `₽${((t.prizePool || 0) * 0.02).toLocaleString('ru-RU')}` },
             ],
             isVip: t.type === 'vip',
             isHot: t.status === 'active',
@@ -135,8 +135,8 @@ export default function TournamentsPage() {
           if (data.success && data.data.length > 0) {
             setLeaderboard(data.data.map((entry: any, index: number) => ({
               position: index + 1,
-              username: entry.username,
-              points: entry.points || entry.score,
+              username: entry.username || 'Игрок',
+              points: entry.points || entry.score || 0,
               prize: `₽${(entry.prize || 0).toLocaleString('ru-RU')}`,
               avatar: index === 0 ? '👑' : index === 1 ? '💎' : index === 2 ? '🦅' : '🎮'
             })));

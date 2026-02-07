@@ -205,8 +205,9 @@ export default function VipPage() {
   const nextLevel = vipLevels.find(l => l.level === currentLevel.level + 1);
   const userPoints = user?.vipPoints || 0;
   const pointsToNextLevel = nextLevel ? nextLevel.pointsRequired - userPoints : 0;
+  const progressDenom = nextLevel ? (nextLevel.pointsRequired - currentLevel.pointsRequired) : 1;
   const progressPercent = nextLevel 
-    ? ((userPoints - currentLevel.pointsRequired) / (nextLevel.pointsRequired - currentLevel.pointsRequired)) * 100
+    ? progressDenom > 0 ? ((userPoints - currentLevel.pointsRequired) / progressDenom) * 100 : 100
     : 100;
 
   return (
@@ -256,7 +257,7 @@ export default function VipPage() {
               {/* VIP Benefits Preview */}
               <div className="flex flex-wrap justify-center gap-4 md:gap-8">
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-black text-aurex-gold-500">15%</div>
+                  <div className="text-3xl md:text-4xl font-black text-aurex-gold-500">{vipLevels.length > 0 ? `${vipLevels[vipLevels.length - 1].cashback}%` : '15%'}</div>
                   <div className="text-sm text-aurex-platinum-300">{t('vip.cashback')}</div>
                 </div>
                 <div className="w-px bg-aurex-gold-500/30"></div>
@@ -319,7 +320,7 @@ export default function VipPage() {
                   </div>
 
                   <div className="text-sm text-aurex-platinum-400">
-                    <p>Зарабатывайте очки за каждую ставку: ₽100 = 1 VIP очко</p>
+                    <p>Зарабатывайте очки за каждую ставку: ₽{pointsPerRub} = 1 VIP очко</p>
                   </div>
                 </div>
 
@@ -492,7 +493,7 @@ export default function VipPage() {
                     <div className="w-8 h-8 rounded-full bg-aurex-gold-500/20 flex items-center justify-center text-aurex-gold-500 font-bold flex-shrink-0">1</div>
                     <div>
                       <div className="text-white font-medium">Играйте в любые игры</div>
-                      <div className="text-sm text-aurex-platinum-400">Каждая ставка ₽100 = 1 VIP очко</div>
+                      <div className="text-sm text-aurex-platinum-400">Каждая ставка ₽{pointsPerRub} = 1 VIP очко</div>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">

@@ -168,7 +168,7 @@ export default function GamesPage() {
     <AuthGuard>
       <Head>
         <title>Imperial Game Collection - AUREX</title>
-        <meta name="description" content="Эксклюзивная коллекция премиальных игр в AUREX. Более 2500 игр от ведущих мировых провайдеров. Высокий RTP, Imperial Jackpots." />
+        <meta name="description" content="Эксклюзивная коллекция премиальных игр в AUREX от ведущих мировых провайдеров. Высокий RTP, Imperial Jackpots." />
       </Head>
       <Layout>
         {/* Hero Block with Background */}
@@ -188,7 +188,7 @@ export default function GamesPage() {
                 Imperial Game Collection
               </h1>
               <p className="text-xl md:text-2xl text-aurex-platinum-300">
-                Эксклюзивная коллекция из более чем <span className="text-aurex-gold-500 font-bold">2,500</span> премиальных игр
+                Эксклюзивная коллекция из более чем <span className="text-aurex-gold-500 font-bold">{allGames.length > 0 ? allGames.length.toLocaleString('ru-RU') : '...'}</span> премиальных игр
               </p>
             </div>
           </div>

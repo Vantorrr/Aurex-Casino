@@ -325,19 +325,19 @@ export default function VaultPage() {
                           </div>
 
                           {/* Wager Progress (if applicable) */}
-                          {bonus.wagerRequired && (
+                          {bonus.wagerRequired != null && bonus.wagerRequired > 0 && (
                             <div className="mb-4">
                               <div className="flex justify-between text-sm mb-2">
                                 <span className="text-aurex-platinum-400">{t('wallet.wager')}</span>
                                 <span className="text-white">
-                                  ₽{bonus.wagerCompleted?.toLocaleString('ru-RU')} / ₽{bonus.wagerRequired.toLocaleString('ru-RU')}
+                                  ₽{(bonus.wagerCompleted || 0).toLocaleString('ru-RU')} / ₽{bonus.wagerRequired.toLocaleString('ru-RU')}
                                 </span>
                               </div>
                               <div className="h-2 bg-aurex-obsidian-700 rounded-full overflow-hidden">
                                 <motion.div
                                   className="h-full bg-gradient-to-r from-aurex-gold-500 to-aurex-gold-400"
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${((bonus.wagerCompleted || 0) / bonus.wagerRequired) * 100}%` }}
+                                  animate={{ width: `${Math.min(((bonus.wagerCompleted || 0) / bonus.wagerRequired) * 100, 100)}%` }}
                                   transition={{ duration: 1, delay: 0.5 }}
                                 />
                               </div>

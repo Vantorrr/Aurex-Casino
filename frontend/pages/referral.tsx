@@ -334,7 +334,7 @@ export default function ReferralPage() {
                             />
                           </div>
                           <div className="text-xs text-aurex-platinum-500 mt-2">
-                            {t('profile.referralProgram.nextLevelBonus', { percent: nextTier.commissionPercent - currentTier.commissionPercent, bonus: nextTier.bonus.toLocaleString('ru-RU') })}
+                            {t('profile.referralProgram.nextLevelBonus', { percent: nextTier.commissionPercent - currentTier.commissionPercent, bonus: (nextTier.bonus || 0).toLocaleString('ru-RU') })}
                           </div>
                         </div>
                       )}
@@ -399,7 +399,7 @@ export default function ReferralPage() {
                                 </td>
                                 <td className="text-center py-3 text-aurex-platinum-300">{tier.requiredReferrals}+</td>
                                 <td className="text-center py-3 text-aurex-gold-500 font-bold">{tier.commissionPercent}%</td>
-                                <td className="text-right py-3 text-white">₽{tier.bonus.toLocaleString('ru-RU')}</td>
+                                <td className="text-right py-3 text-white">₽{(tier.bonus || 0).toLocaleString('ru-RU')}</td>
                               </tr>
                             ))}
                           </tbody>

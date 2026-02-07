@@ -297,8 +297,8 @@ export default function WalletPage() {
     }
 
     // Check if wager is active
-    if (user?.wager?.active && user.wager.completed < user.wager.required) {
-      toast.error(`Сначала отыграйте вейджер: ₽${(user.wager.required - user.wager.completed).toFixed(2)} осталось`);
+    if (user?.wager?.active && (user.wager.completed || 0) < (user.wager.required || 0)) {
+      toast.error(`Сначала отыграйте вейджер: ₽${((user.wager.required || 0) - (user.wager.completed || 0)).toFixed(2)} осталось`);
       return;
     }
 
@@ -361,7 +361,7 @@ export default function WalletPage() {
     }
   };
 
-  const wagerProgress = user?.wager?.active ? (user.wager.completed / user.wager.required) * 100 : 0;
+  const wagerProgress = user?.wager?.active && user.wager.required > 0 ? ((user.wager.completed || 0) / user.wager.required) * 100 : 0;
 
   return (
     <AuthGuard>
@@ -438,7 +438,7 @@ export default function WalletPage() {
                   <span className="text-sm font-medium text-aurex-platinum-400">{t('wallet.vipLevel')}</span>
                 </div>
                 <div className="text-4xl font-black text-aurex-gold-500 mb-1">
-                  {['Bronze', 'Silver', 'Gold', 'Platinum', 'Emperor'][Math.min((user?.vipLevel || 1) - 1, 4)]}
+                  {['Bronze', 'Silver', 'Gold', 'Platinum', 'Emperor'][Math.max(0, Math.min((user?.vipLevel || 1) - 1, 4))]}
                 </div>
                 <div className="text-sm text-aurex-platinum-400">{user?.vipPoints || 0} VIP очков</div>
               </motion.div>
@@ -456,15 +456,15 @@ export default function WalletPage() {
                     <Percent className="w-6 h-6 text-aurex-gold-500" />
                     <div>
                       <h3 className="text-white font-bold">Активный вейджер</h3>
-                      <p className="text-sm text-aurex-platinum-400">x{user.wager.multiplier} отыгрыш</p>
+                      <p className="text-sm text-aurex-platinum-400">x{user?.wager?.multiplier || 0} отыгрыш</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-aurex-gold-500 font-bold">
-                      ₽{user.wager.completed.toFixed(2)} / ₽{user.wager.required.toFixed(2)}
+                      ₽{(user?.wager?.completed || 0).toFixed(2)} / ₽{(user?.wager?.required || 0).toFixed(2)}
                     </div>
                     <div className="text-sm text-aurex-platinum-400">
-                      Осталось: ₽{(user.wager.required - user.wager.completed).toFixed(2)}
+                      Осталось: ₽{((user?.wager?.required || 0) - (user?.wager?.completed || 0)).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -692,14 +692,14 @@ export default function WalletPage() {
                       </h2>
 
                       {/* Wager Warning */}
-                      {user?.wager?.active && user.wager.completed < user.wager.required && (
+                      {user?.wager?.active && (user.wager.completed || 0) < (user.wager.required || 0) && (
                         <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
                           <div className="flex items-start space-x-3">
                             <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0" />
                             <div>
                               <div className="text-yellow-400 font-bold">Активный вейджер</div>
                               <div className="text-sm text-yellow-300/80">
-                                Для вывода необходимо отыграть ещё ₽{(user.wager.required - user.wager.completed).toFixed(2)}
+                                Для вывода необходимо отыграть ещё ₽{((user.wager.required || 0) - (user.wager.completed || 0)).toFixed(2)}
                               </div>
                             </div>
                           </div>
@@ -769,7 +769,7 @@ export default function WalletPage() {
                       {/* Submit */}
                       <button
                         onClick={handleWithdraw}
-                        disabled={!selectedMethod || depositAmount <= 0 || !withdrawAddress || isProcessing || (user?.wager?.active && user.wager.completed < user.wager.required)}
+                        disabled={!selectedMethod || depositAmount <= 0 || !withdrawAddress || isProcessing || (user?.wager?.active && (user.wager?.completed || 0) < (user.wager?.required || 0))}
                         className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                       >
                         {isProcessing ? (

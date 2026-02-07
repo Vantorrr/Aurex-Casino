@@ -54,8 +54,8 @@ export default function ProfilePage() {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
-    country: 'Россия',
-    birthDate: ''
+    country: user?.country || '',
+    birthDate: user?.birthDate || ''
   });
 
   const [passwords, setPasswords] = useState({
@@ -113,7 +113,7 @@ export default function ProfilePage() {
             date: new Date(s.createdAt).toLocaleString('ru-RU'),
             bet: s.totalBet || 0,
             win: s.totalWin || 0,
-            multiplier: s.totalBet > 0 ? `${(s.totalWin / s.totalBet).toFixed(1)}x` : '0x'
+            multiplier: s.totalBet > 0 ? `${((s.totalWin || 0) / s.totalBet).toFixed(1)}x` : '0x'
           })));
         } else {
           // Пустой список если нет истории
@@ -183,10 +183,10 @@ export default function ProfilePage() {
                   <div className="inline-flex items-center gap-3 px-4 py-2 bg-aurex-obsidian-900/80 border border-aurex-gold-500/40 rounded-xl mb-4">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-wider text-aurex-platinum-500">{t('profile.playerId')}</span>
-                      <span className="text-lg font-mono font-bold text-aurex-gold-400">{user?.odid || `AUREX-${user?.id?.slice(-8).toUpperCase()}`}</span>
+                      <span className="text-lg font-mono font-bold text-aurex-gold-400">{user?.odid || `AUREX-${String(user?.id || '000000').slice(-8).toUpperCase()}`}</span>
                     </div>
                     <button 
-                      onClick={() => copyToClipboard(user?.odid || `AUREX-${user?.id?.slice(-8).toUpperCase()}`)} 
+                      onClick={() => copyToClipboard(user?.odid || `AUREX-${String(user?.id || '000000').slice(-8).toUpperCase()}`)} 
                       className="p-2 bg-aurex-gold-500/20 hover:bg-aurex-gold-500/30 text-aurex-gold-500 rounded-lg transition-colors"
                       title={t('profile.copyId')}
                     >
@@ -201,7 +201,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="px-4 py-2 bg-aurex-obsidian-900/50 rounded-xl">
                       <div className="text-xs text-aurex-platinum-500">VIP уровень</div>
-                      <div className="text-lg font-bold text-aurex-gold-500">{vipNames[(user?.vipLevel || 1) - 1]}</div>
+                      <div className="text-lg font-bold text-aurex-gold-500">{vipNames[Math.max(0, Math.min((user?.vipLevel || 1) - 1, vipNames.length - 1))]}</div>
                     </div>
                     <div className="px-4 py-2 bg-aurex-obsidian-900/50 rounded-xl">
                       <div className="text-xs text-aurex-platinum-500">{t('profile.gamesPlayed')}</div>
@@ -330,11 +330,19 @@ export default function ProfilePage() {
                           disabled={!isEditing}
                           className="w-full px-4 py-3 bg-aurex-obsidian-900 border border-aurex-gold-500/20 rounded-xl text-white disabled:opacity-50 focus:border-aurex-gold-500/50 focus:outline-none"
                         >
-                          <option value="Germany">Германия</option>
-                          <option value="Austria">Австрия</option>
-                          <option value="Switzerland">Швейцария</option>
-                          <option value="Netherlands">Нидерланды</option>
-                          <option value="Poland">Польша</option>
+                          <option value="">Не указана</option>
+                          <option value="Россия">Россия</option>
+                          <option value="Украина">Украина</option>
+                          <option value="Беларусь">Беларусь</option>
+                          <option value="Казахстан">Казахстан</option>
+                          <option value="Узбекистан">Узбекистан</option>
+                          <option value="Кыргызстан">Кыргызстан</option>
+                          <option value="Германия">Германия</option>
+                          <option value="Австрия">Австрия</option>
+                          <option value="Швейцария">Швейцария</option>
+                          <option value="Нидерланды">Нидерланды</option>
+                          <option value="Польша">Польша</option>
+                          <option value="Другое">Другое</option>
                         </select>
                       </div>
                     </div>

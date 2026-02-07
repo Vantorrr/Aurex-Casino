@@ -156,7 +156,7 @@ export default function ActiveBonusWidget() {
                           </span>
                         </div>
                         <div className="text-2xl font-bold text-aurex-gold-400 mt-1">
-                          ₽{bonus.amount.toLocaleString('ru-RU')}
+                          ₽{(bonus.amount || 0).toLocaleString('ru-RU')}
                         </div>
                       </div>
                       <div className="text-right">
@@ -179,13 +179,13 @@ export default function ActiveBonusWidget() {
                       <div className="flex justify-between text-sm">
                         <span className="text-aurex-platinum-400">Прогресс отыгрыша</span>
                         <span className="text-white font-medium">
-                          {bonus.progress.toFixed(1)}%
+                          {(bonus.progress || 0).toFixed(1)}%
                         </span>
                       </div>
                       <div className="relative h-3 bg-aurex-obsidian-700 rounded-full overflow-hidden">
-                        <motion.div
+                          <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(bonus.progress, 100)}%` }}
+                          animate={{ width: `${Math.min(bonus.progress || 0, 100)}%` }}
                           transition={{ duration: 0.5, ease: 'easeOut' }}
                           className={`absolute inset-y-0 left-0 rounded-full ${
                             bonus.progress >= 100
@@ -196,21 +196,21 @@ export default function ActiveBonusWidget() {
                         {/* Glow effect */}
                         <div 
                           className="absolute inset-y-0 left-0 bg-aurex-gold-500/30 blur-sm rounded-full"
-                          style={{ width: `${Math.min(bonus.progress, 100)}%` }}
+                          style={{ width: `${Math.min(bonus.progress || 0, 100)}%` }}
                         />
                       </div>
                       <div className="flex justify-between text-xs text-aurex-platinum-500">
                         <span>
-                          ₽{bonus.wageringCompleted.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                          ₽{(bonus.wageringCompleted || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
                         </span>
                         <span>
-                          ₽{bonus.wageringRequired.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                          ₽{(bonus.wageringRequired || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     </div>
 
                     {/* Completion message */}
-                    {bonus.progress >= 100 && (
+                        {(bonus.progress || 0) >= 100 && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}

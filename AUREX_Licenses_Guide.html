@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUREX Casino — Лицензирование</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0A0A0A;
+            color: #E8E8E8;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 0 40px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 42px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #D4AF37, #F5D060, #D4AF37);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+            letter-spacing: 3px;
+        }
+
+        .header .subtitle {
+            font-size: 18px;
+            color: #888;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .header .confidential {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 6px 20px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 20px;
+            font-size: 11px;
+            color: #D4AF37;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Intro */
+        .intro {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+
+        .intro p {
+            font-size: 16px;
+            color: #AAA;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .intro strong {
+            color: #D4AF37;
+        }
+
+        /* Section title */
+        .section-title {
+            font-family: 'Cinzel', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #D4AF37;
+            margin-bottom: 30px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+        }
+
+        /* License Cards */
+        .license-card {
+            background: #111;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 0;
+            margin-bottom: 30px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .license-card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+        }
+
+        .license-card.recommended {
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.08);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 32px;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .card-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #D4AF37, #B8960C);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            color: #0A0A0A;
+        }
+
+        .card-name h2 {
+            font-family: 'Cinzel', serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .card-name .region {
+            font-size: 13px;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .card-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .badge-budget {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-optimal {
+            background: rgba(212, 175, 55, 0.15);
+            color: #D4AF37;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .badge-premium {
+            background: rgba(168, 85, 247, 0.15);
+            color: #A855F7;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .badge-asia {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-alternative {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3B82F6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .card-body {
+            padding: 28px 32px;
+        }
+
+        .price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .price-main {
+            font-size: 36px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #D4AF37, #F5D060);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .price-period {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .spec-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .spec-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .spec-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #E8E8E8;
+        }
+
+        .spec-value.highlight {
+            color: #22C55E;
+        }
+
+        .spec-value.gold {
+            color: #D4AF37;
+        }
+
+        .features-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .feature-tag {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(212, 175, 55, 0.08);
+            color: #D4AF37;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+        }
+
+        .feature-tag.green {
+            background: rgba(34, 197, 94, 0.08);
+            color: #22C55E;
+            border-color: rgba(34, 197, 94, 0.15);
+        }
+
+        .cons {
+            padding: 14px 16px;
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.1);
+            border-radius: 10px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .cons strong {
+            color: #EF4444;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Recommendation */
+        .recommendation {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.03));
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 16px;
+            padding: 40px;
+            margin: 50px 0;
+        }
+
+        .recommendation h3 {
+            font-family: 'Cinzel', serif;
+            font-size: 24px;
+            color: #D4AF37;
+            margin-bottom: 24px;
+        }
+
+        .roadmap {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .roadmap-step {
+            display: flex;
+            gap: 20px;
+            position: relative;
+        }
+
+        .roadmap-line {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 40px;
+            flex-shrink: 0;
+        }
+
+        .roadmap-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #D4AF37;
+            border: 3px solid #0A0A0A;
+            box-shadow: 0 0 0 2px #D4AF37;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+
+        .roadmap-connector {
+            width: 2px;
+            flex: 1;
+            background: rgba(212, 175, 55, 0.2);
+            min-height: 40px;
+        }
+
+        .roadmap-content {
+            padding-bottom: 32px;
+        }
+
+        .roadmap-content h4 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .roadmap-content .time {
+            font-size: 13px;
+            color: #D4AF37;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .roadmap-content p {
+            font-size: 14px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        /* Summary table */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 14px;
+        }
+
+        .summary-table th {
+            background: rgba(212, 175, 55, 0.1);
+            color: #D4AF37;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .summary-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: #CCC;
+        }
+
+        .summary-table tr:hover td {
+            background: rgba(212, 175, 55, 0.03);
+        }
+
+        .summary-table .check {
+            color: #22C55E;
+            font-weight: 700;
+        }
+
+        .summary-table .cross {
+            color: #EF4444;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 0 20px;
+            border-top: 1px solid rgba(212, 175, 55, 0.1);
+            margin-top: 50px;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: #444;
+        }
+
+        .footer .brand {
+            font-family: 'Cinzel', serif;
+            color: #D4AF37;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 28px; }
+            .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .specs-grid { grid-template-columns: 1fr 1fr; }
+            .price-main { font-size: 28px; }
+            .recommendation { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>AUREX CASINO</h1>
+            <p class="subtitle">Гайд по лицензированию iGaming для партнёров</p>
+            <div class="confidential">Конфиденциально • 2026</div>
+        </div>
+
+        <!-- Intro -->
+        <div class="intro">
+            <p>
+                Лицензия — фундамент легального онлайн-казино. Она открывает доступ к <strong>платёжным системам (PSP)</strong>, 
+                повышает <strong>доверие игроков</strong> и защищает бизнес юридически. Ниже — сравнительный анализ 
+                лучших юрисдикций для iGaming с актуальными ценами на 2026 год.
+            </p>
+        </div>
+
+        <!-- License 1: Anjouan -->
+        <div class="license-card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-number">1</div>
+                    <div class="card-name">
+                        <h2>Anjouan</h2>
+                        <span class="region">Коморские острова</span>
+                    </div>
+                </div>
+                <span class="card-badge badge-budget">Бюджет</span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-main">€18,000</span>
+                    <span class="price-period">/ год</span>
+                </div>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Налог GGR</div>
+                        <div class="spec-value highlight">0%</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок получения</div>
+                        <div class="spec-value">2–4 недели</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок лицензии</div>
+                        <div class="spec-value">1 год</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Уставной капитал</div>
+                        <div class="spec-value highlight">Не требуется</div>
+                    </div>
+                </div>
+                <div class="features-row">
+                    <span class="feature-tag green">Казино</span>
+                    <span class="feature-tag green">Покер</span>
+                    <span class="feature-tag green">Ставки</span>
+                    <span class="feature-tag green">Лотереи</span>
+                    <span class="feature-tag green">Криптовалюта</span>
+                    <span class="feature-tag">2 URL в комплекте</span>
+                    <span class="feature-tag">+€500 за доп. URL</span>
+                </div>
+                <div class="cons">
+                    <strong>Ограничения:</strong> Низкий престиж, часть PSP не работают, запрещены: ЕС, UK, USA, Австралия, FATF-страны
+                </div>
+            </div>
+        </div>
+
+        <!-- License 2: Curacao -->
+        <div class="license-card recommended">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-number">2</div>
+                    <div class="card-name">
+                        <h2>Curaçao</h2>
+                        <span class="region">Нидерландские Антилы • Новый закон LOK 2025</span>
+                    </div>
+                </div>
+                <span class="card-badge badge-optimal">★ Рекомендуем</span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-main">€55,000</span>
+                    <span class="price-period">/ год (включая заявку и продление)</span>
+                </div>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Налог GGR</div>
+                        <div class="spec-value highlight">0%</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок получения</div>
+                        <div class="spec-value">4–6 недель</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок лицензии</div>
+                        <div class="spec-value">1 год (продление)</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Требования</div>
+                        <div class="spec-value">Юрлицо + директор на Кюрасао</div>
+                    </div>
+                </div>
+                <div class="features-row">
+                    <span class="feature-tag green">Казино</span>
+                    <span class="feature-tag green">Ставки</span>
+                    <span class="feature-tag green">Покер</span>
+                    <span class="feature-tag green">eSports</span>
+                    <span class="feature-tag green">Live Dealer</span>
+                    <span class="feature-tag green">Криптовалюта</span>
+                    <span class="feature-tag">B2C и B2B лицензии</span>
+                </div>
+                <div class="cons">
+                    <strong>Нюансы:</strong> С 2025 года новый закон LOK — ужесточена регуляция, нужен локальный офис и резидентный директор. Старые суб-лицензии конвертированы в новый формат.
+                </div>
+            </div>
+        </div>
+
+        <!-- License 3: Kahnawake -->
+        <div class="license-card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-number">3</div>
+                    <div class="card-name">
+                        <h2>Kahnawake</h2>
+                        <span class="region">Канада (территория Мохоков)</span>
+                    </div>
+                </div>
+                <span class="card-badge badge-alternative">Альтернатива</span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-main">$25,000–40,000</span>
+                    <span class="price-period">/ год</span>
+                </div>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Налог GGR</div>
+                        <div class="spec-value highlight">0%</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок получения</div>
+                        <div class="spec-value">3–6 месяцев</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Регулятор с</div>
+                        <div class="spec-value">1999 года</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Репутация</div>
+                        <div class="spec-value gold">Высокая</div>
+                    </div>
+                </div>
+                <div class="features-row">
+                    <span class="feature-tag green">Казино</span>
+                    <span class="feature-tag green">Покер</span>
+                    <span class="feature-tag green">Ставки</span>
+                </div>
+                <div class="cons">
+                    <strong>Ограничения:</strong> Длительная проверка, ограниченные рынки, менее известна в СНГ-сегменте
+                </div>
+            </div>
+        </div>
+
+        <!-- License 4: Malta -->
+        <div class="license-card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-number">4</div>
+                    <div class="card-name">
+                        <h2>Malta (MGA)</h2>
+                        <span class="region">Европейский Союз</span>
+                    </div>
+                </div>
+                <span class="card-badge badge-premium">Премиум</span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-main">€100,000+</span>
+                    <span class="price-period">/ год (с учётом всех сборов)</span>
+                </div>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Заявка</div>
+                        <div class="spec-value">€5,000</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Налог GGR</div>
+                        <div class="spec-value">5%</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок получения</div>
+                        <div class="spec-value">6–12 месяцев</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Уставной капитал</div>
+                        <div class="spec-value">€100,000 минимум</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Срок лицензии</div>
+                        <div class="spec-value gold">10 лет</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Compliance / год</div>
+                        <div class="spec-value">до €375,000</div>
+                    </div>
+                </div>
+                <div class="features-row">
+                    <span class="feature-tag green">Все виды iGaming</span>
+                    <span class="feature-tag green">ЕС рынок</span>
+                    <span class="feature-tag green">Все PSP</span>
+                    <span class="feature-tag">Высший престиж</span>
+                </div>
+                <div class="cons">
+                    <strong>Нюансы:</strong> Самая дорогая и долгая. Жёсткая проверка бенефициаров. Обязательный compliance-офицер, AML/KYC отдел. Для масштабных операций с фокусом на Европу.
+                </div>
+            </div>
+        </div>
+
+        <!-- License 5: PAGCOR -->
+        <div class="license-card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-number">5</div>
+                    <div class="card-name">
+                        <h2>PAGCOR</h2>
+                        <span class="region">Филиппины</span>
+                    </div>
+                </div>
+                <span class="card-badge badge-asia">Азия</span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-main">$200,000–350,000</span>
+                    <span class="price-period">/ год (заявка + лицензия)</span>
+                </div>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Заявка</div>
+                        <div class="spec-value">$120,000–150,000</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Налог GGR</div>
+                        <div class="spec-value">2%</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Фокус</div>
+                        <div class="spec-value">Азиатский рынок</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Типы</div>
+                        <div class="spec-value">Live Dealer / RNG</div>
+                    </div>
+                </div>
+                <div class="features-row">
+                    <span class="feature-tag green">Live Casino</span>
+                    <span class="feature-tag green">RNG Casino</span>
+                    <span class="feature-tag green">Ставки</span>
+                </div>
+                <div class="cons">
+                    <strong>Ограничения:</strong> Очень дорого. Ориентировано на азиатский рынок. Сложная бюрократия. Не релевантно для СНГ-сегмента.
+                </div>
+            </div>
+        </div>
+
+        <!-- Сравнительная таблица -->
+        <h2 class="section-title">Сравнительная таблица</h2>
+        
+        <div style="overflow-x: auto;">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Параметр</th>
+                        <th>Anjouan</th>
+                        <th>Curaçao ★</th>
+                        <th>Kahnawake</th>
+                        <th>Malta</th>
+                        <th>PAGCOR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Стоимость / год</strong></td>
+                        <td>€18,000</td>
+                        <td><strong style="color:#D4AF37">€55,000</strong></td>
+                        <td>$25–40K</td>
+                        <td>€100K+</td>
+                        <td>$200–350K</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Налог GGR</strong></td>
+                        <td class="check">0%</td>
+                        <td class="check">0%</td>
+                        <td class="check">0%</td>
+                        <td>5%</td>
+                        <td>2%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Срок получения</strong></td>
+                        <td class="check">2–4 нед.</td>
+                        <td>4–6 нед.</td>
+                        <td>3–6 мес.</td>
+                        <td class="cross">6–12 мес.</td>
+                        <td>3–6 мес.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Криптовалюта</strong></td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td>Ограничено</td>
+                        <td>Ограничено</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PSP совместимость</strong></td>
+                        <td>Средняя</td>
+                        <td class="check">Высокая</td>
+                        <td>Средняя</td>
+                        <td class="check">Максимальная</td>
+                        <td>Азия</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Репутация</strong></td>
+                        <td>Низкая</td>
+                        <td class="check">Высокая</td>
+                        <td>Средняя</td>
+                        <td class="check">Максимальная</td>
+                        <td>Средняя</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Казино + Ставки</strong></td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Локальный офис</strong></td>
+                        <td class="check">Не нужен</td>
+                        <td>Нужен</td>
+                        <td class="check">Не нужен</td>
+                        <td>Нужен</td>
+                        <td>Нужен</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Рекомендация -->
+        <div class="recommendation">
+            <h3>Рекомендованная стратегия для AUREX</h3>
+            <div class="roadmap">
+                <div class="roadmap-step">
+                    <div class="roadmap-line">
+                        <div class="roadmap-dot"></div>
+                        <div class="roadmap-connector"></div>
+                    </div>
+                    <div class="roadmap-content">
+                        <div class="time">Этап 1 — Запуск (месяц 1–2)</div>
+                        <h4>Anjouan — €18,000/год</h4>
+                        <p>Быстрый старт за 2–4 недели. Минимальные затраты, крипто-платежи, все виды игр. Идеально для тестирования рынка и набора первой аудитории.</p>
+                    </div>
+                </div>
+                <div class="roadmap-step">
+                    <div class="roadmap-line">
+                        <div class="roadmap-dot"></div>
+                        <div class="roadmap-connector"></div>
+                    </div>
+                    <div class="roadmap-content">
+                        <div class="time">Этап 2 — Масштабирование (месяц 3–6)</div>
+                        <h4>Curaçao — €55,000/год</h4>
+                        <p>Переход на серьёзную лицензию. Все PSP работают, высокая репутация, 0% GGR. Стандарт индустрии для международных операторов.</p>
+                    </div>
+                </div>
+                <div class="roadmap-step">
+                    <div class="roadmap-line">
+                        <div class="roadmap-dot"></div>
+                    </div>
+                    <div class="roadmap-content">
+                        <div class="time">Этап 3 — Экспансия (год 2+)</div>
+                        <h4>Malta (MGA) — €100,000+/год</h4>
+                        <p>Выход на рынок ЕС. Максимальный престиж, все платёжные шлюзы, 10-летняя лицензия. Для стабильного бизнеса с высоким оборотом.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p class="brand">AUREX — The Golden Empire of Win</p>
+            <p style="margin-top: 8px;">Документ подготовлен для внутреннего использования • 2026</p>
+        </div>
+
+    </div>
+</body>
+</html>

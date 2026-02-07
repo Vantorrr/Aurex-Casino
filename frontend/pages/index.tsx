@@ -109,7 +109,7 @@ export default function HomePage() {
       try {
         const res = await fetch('/api/config/jackpots');
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.data?.pools) {
           setJackpots(data.data.pools);
         }
       } catch (error) {
@@ -132,7 +132,7 @@ export default function HomePage() {
     { label: t('stats.averageRtp'), value: stats.averageRtp, icon: Trophy },
   ];
 
-  const featuredGames = gamesData?.data?.data?.data?.groups?.[0]?.games?.slice(0, 12) || [];
+  const featuredGames = gamesData?.data?.data?.data?.groups?.[0]?.games?.slice(0, 12) || gamesData?.data?.games?.slice(0, 12) || [];
 
   return (
     <>
