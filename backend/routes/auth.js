@@ -138,7 +138,7 @@ router.post('/register', [
     // Create user
     const result = await pool.query(
       `INSERT INTO users (odid, username, email, password, phone, referral_code, referred_by, balance, bonus_balance, vip_level, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 1000, 500, 1, true) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, 1, true) RETURNING *`,
       [odid, username, normalizedEmail, hashedPassword, normalizedPhone || null, userReferralCode, referredBy]
     );
 
