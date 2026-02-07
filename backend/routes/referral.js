@@ -29,6 +29,17 @@ router.get('/stats', auth, async (req, res) => {
     
     const refStats = refResult.rows[0];
     
+    // Считаем заработок за текущий месяц
+    const monthResult = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as month_earnings
+      FROM transactions
+      WHERE user_id = $1 AND type = 'referral_commission'
+        AND created_at >= date_trunc('month', CURRENT_DATE)
+    `, [req.user.id]);
+
+    const totalEarnings = parseFloat(user.referral_earnings) || 0;
+    const thisMonthEarnings = parseFloat(monthResult.rows[0].month_earnings) || 0;
+
     res.json({
       success: true,
       data: {
@@ -36,7 +47,10 @@ router.get('/stats', auth, async (req, res) => {
         referralLink: `https://aurex.casino/register?ref=${user.referral_code}`,
         totalReferrals: parseInt(refStats.total_referrals),
         activeReferrals: parseInt(refStats.active_referrals),
-        totalEarnings: parseFloat(user.referral_earnings) || 0,
+        totalEarnings,
+        pendingEarnings: totalEarnings, // доступно для вывода
+        availableWithdraw: totalEarnings,
+        thisMonthEarnings,
         commissionPercent: 10 // 10% от депозитов рефералов
       }
     });
