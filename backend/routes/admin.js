@@ -156,7 +156,9 @@ router.get('/users', adminAuth, async (req, res) => {
     if (conditions.length > 0) {
       countQuery += ' WHERE ' + conditions.join(' AND ');
     }
-    const countResult = await pool.query(countQuery, values);
+    // Count query needs only condition values, not LIMIT/OFFSET
+    const countValues = values.slice(0, values.length - 2);
+    const countResult = await pool.query(countQuery, countValues);
     
     const users = result.rows.map(u => ({
       id: u.id,
@@ -445,36 +447,41 @@ router.post('/transactions/:id/:action', adminAuth, async (req, res) => {
     }
     
     const newStatus = action === 'approve' ? 'completed' : 'failed';
+    const { withTransaction } = require('../utils/dbTransaction');
     
-    const result = await pool.query(
-      'UPDATE transactions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [newStatus, id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Transaction not found' });
-    }
-    
-    const transaction = result.rows[0];
-    
-    // If approved withdrawal, deduct from balance
-    if (action === 'approve' && transaction.type === 'withdrawal') {
-      await pool.query(
-        'UPDATE users SET balance = balance - $1 WHERE id = $2',
-        [Math.abs(parseFloat(transaction.amount)), transaction.user_id]
+    const transaction = await withTransaction(pool, async (client) => {
+      const result = await client.query(
+        'UPDATE transactions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+        [newStatus, id]
       );
-    }
-    
-    // If rejected withdrawal, return money
-    if (action === 'reject' && transaction.type === 'withdrawal') {
-      await pool.query(
-        'UPDATE users SET balance = balance + $1 WHERE id = $2',
-        [Math.abs(parseFloat(transaction.amount)), transaction.user_id]
-      );
-    }
+      
+      if (result.rows.length === 0) {
+        throw { status: 404, message: 'Transaction not found' };
+      }
+      
+      const tx = result.rows[0];
+      
+      if (tx.type === 'withdrawal') {
+        // Lock user row
+        await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [tx.user_id]);
+        
+        if (action === 'approve') {
+          // Деньги уже списаны при создании заявки — ничего не делаем
+        } else {
+          // Rejected — возвращаем деньги
+          await client.query(
+            'UPDATE users SET balance = balance + $1 WHERE id = $2',
+            [Math.abs(parseFloat(tx.amount)), tx.user_id]
+          );
+        }
+      }
+      
+      return tx;
+    });
     
     res.json({ success: true, message: `Transaction ${action}d`, data: transaction });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, error: error.message });
     console.error('Transaction action error:', error);
     res.status(500).json({ success: false, error: 'Failed to process transaction' });
   }

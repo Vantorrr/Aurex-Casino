@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 class UserPG {
   // Find user by ID
@@ -54,7 +55,7 @@ class UserPG {
       
       // Generate ODID and referral code
       const odid = `AUREX-${Date.now().toString(36).toUpperCase()}`;
-      const referralCode = `REF-${username.toUpperCase().slice(0, 6)}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const referralCode = `REF-${username.toUpperCase().slice(0, 6)}${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       
       const result = await pool.query(
         `INSERT INTO users (odid, username, email, password, referral_code, balance, bonus_balance, vip_level)

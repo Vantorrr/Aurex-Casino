@@ -254,6 +254,7 @@ router.post('/:id/cancel', auth, async (req, res) => {
     
     res.json({ success: true, message: 'Бонус отменён' });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     console.error('Cancel bonus error:', error);
     res.status(500).json({ success: false, message: error.message });
   }

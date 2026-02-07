@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSettingsStore, Language } from '../store/settingsStore';
+import { useSettingsStore, Language, exchangeRates, currencySymbols } from '../store/settingsStore';
 
 // Import translations
 import ruTranslations from '../public/locales/ru/common.json';
@@ -74,8 +74,7 @@ export function useCurrency() {
   const currency = useSettingsStore((state) => state.currency);
   const hideBalance = useSettingsStore((state) => state.hideBalance);
 
-  // Импортируем единый источник курсов из settingsStore
-  const { exchangeRates, currencySymbols: symbols } = require('../store/settingsStore');
+  const symbols = currencySymbols;
 
   const format = useCallback((amountInRub: number, showHidden = false): string => {
     if (hideBalance && !showHidden) {

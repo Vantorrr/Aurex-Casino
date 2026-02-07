@@ -272,12 +272,6 @@ export default function AdminDashboard() {
                         <div className="p-2 bg-white/20 rounded-lg">
                           {card.icon}
                         </div>
-                        {card.trend && (
-                          <span className="flex items-center text-xs font-medium text-white/80 bg-white/20 px-2 py-1 rounded">
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            {card.trend}
-                          </span>
-                        )}
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-white mb-1">{card.value}</div>
                       <div className="text-sm text-white/80">{card.title}</div>
@@ -290,12 +284,6 @@ export default function AdminDashboard() {
                       <div className="p-2 bg-white/20 rounded-lg">
                         {card.icon}
                       </div>
-                      {card.trend && (
-                        <span className="flex items-center text-xs font-medium text-white/80 bg-white/20 px-2 py-1 rounded">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          {card.trend}
-                        </span>
-                      )}
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white mb-1">{card.value}</div>
                     <div className="text-sm text-white/80">{card.title}</div>

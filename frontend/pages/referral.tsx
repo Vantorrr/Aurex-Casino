@@ -192,7 +192,7 @@ export default function ReferralPage() {
                 </h1>
                 
                 <p className="text-xl text-aurex-platinum-300 mb-8 max-w-2xl mx-auto">
-                  {t('profile.referralProgram.heroSubtitle', { percent: tiers.length > 0 ? Math.max(...tiers.map((tier: any) => tier.percent || 0)) : 20 })}
+                  {t('profile.referralProgram.heroSubtitle', { percent: tiers.length > 0 ? Math.max(...tiers.map((tier: any) => tier.commissionPercent || tier.percent || 0)) : 20 })}
                 </p>
 
                 {/* Referral Link Box */}
@@ -332,7 +332,7 @@ export default function ReferralPage() {
                           <div className="h-3 bg-aurex-obsidian-700 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-gradient-to-r from-aurex-gold-500 to-aurex-gold-400 rounded-full"
-                              style={{ width: `${(stats.totalReferrals / nextTier.requiredReferrals) * 100}%` }}
+                              style={{ width: `${nextTier.requiredReferrals > 0 ? Math.min(100, (stats.totalReferrals / nextTier.requiredReferrals) * 100) : 0}%` }}
                             />
                           </div>
                           <div className="text-xs text-aurex-platinum-500 mt-2">

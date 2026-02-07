@@ -212,6 +212,7 @@ router.post('/make-bet', async (req, res) => {
     });
 
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, error: error.message, balance: error.balance });
     console.error('❌ Ошибка ставки:', error);
     res.status(500).json({ success: false, error: error.message });
   }

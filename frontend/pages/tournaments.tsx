@@ -228,6 +228,7 @@ export default function TournamentsPage() {
   const totalPrizePool = tournaments.reduce((sum, t) => sum + t.prizePool, 0);
   const activeParticipants = tournaments.reduce((sum, t) => sum + t.currentParticipants, 0);
   const activeTournamentsCount = tournaments.filter(t => t.status === 'active').length;
+  const weeklyPaidOut = tournaments.filter(t => t.status === 'finished').reduce((sum, t) => sum + t.prizePool, 0);
   
   const formatAmount = (amount: number) => {
     if (amount >= 1000000) return `₽${(amount / 1000000).toFixed(0)}M`;

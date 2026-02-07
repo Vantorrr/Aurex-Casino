@@ -154,10 +154,14 @@ router.post('/credit', adminAuth, async (req, res) => {
     
     const commission = depositAmount * 0.1; // 10%
     
-    await pool.query(
-      'UPDATE users SET referral_earnings = referral_earnings + $1 WHERE id = $2',
-      [commission, referrerId]
-    );
+    const { withTransaction } = require('../utils/dbTransaction');
+    await withTransaction(pool, async (client) => {
+      await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [referrerId]);
+      await client.query(
+        'UPDATE users SET referral_earnings = referral_earnings + $1 WHERE id = $2',
+        [commission, referrerId]
+      );
+    });
     
     res.json({ success: true, data: { credited: commission } });
   } catch (error) {
