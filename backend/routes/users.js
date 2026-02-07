@@ -127,10 +127,10 @@ router.get('/vip', auth, async (req, res) => {
     
     const vipLevels = [
       { level: 1, name: 'Bronze', pointsRequired: 0, cashbackPercent: 5 },
-      { level: 2, name: 'Silver', pointsRequired: 1000, cashbackPercent: 7 },
-      { level: 3, name: 'Gold', pointsRequired: 5000, cashbackPercent: 10 },
-      { level: 4, name: 'Platinum', pointsRequired: 20000, cashbackPercent: 12 },
-      { level: 5, name: 'Emperor', pointsRequired: 100000, cashbackPercent: 15 }
+      { level: 2, name: 'Silver', pointsRequired: 5000, cashbackPercent: 7 },
+      { level: 3, name: 'Gold', pointsRequired: 25000, cashbackPercent: 10 },
+      { level: 4, name: 'Platinum', pointsRequired: 100000, cashbackPercent: 12 },
+      { level: 5, name: 'Emperor', pointsRequired: 500000, cashbackPercent: 15 }
     ];
     
     const currentLevel = vipLevels.find(l => l.level === user.vip_level) || vipLevels[0];
