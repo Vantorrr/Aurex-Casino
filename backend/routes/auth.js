@@ -17,6 +17,7 @@ const formatUser = (user) => {
     odid: user.odid || `AUREX-${String(id).padStart(6, '0')}`,
     username: user.username,
     email: user.email,
+    phone: user.phone || null,
     firstName: user.first_name,
     lastName: user.last_name,
     balance: parseFloat(user.balance) || 0,

@@ -53,8 +53,8 @@ export default function ProfilePage() {
     email: user?.email || '',
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    phone: '',
-    country: 'Germany',
+    phone: user?.phone || '',
+    country: 'Россия',
     birthDate: '1990-01-01'
   });
 
