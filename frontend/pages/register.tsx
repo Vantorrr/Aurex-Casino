@@ -19,6 +19,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import axios from 'axios';
+import InputMask from 'react-input-mask';
 import Image from 'next/image';
 import { useAuthStore } from '../store/authStore';
 import Layout from '../components/Layout';
@@ -249,15 +250,21 @@ export default function RegisterPage() {
                         <div className="space-y-3">
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                              type="tel"
+                            <InputMask
+                              mask="+7 (999) 999-99-99"
+                              maskChar="_"
                               {...register('phone', {
                                 required: regMethod === 'phone' ? 'Номер телефона обязателен' : false,
+                                validate: (value) => {
+                                  if (regMethod !== 'phone') return true;
+                                  const digits = value?.replace(/\D/g, '') || '';
+                                  return digits.length === 11 || 'Введите полный номер телефона';
+                                }
                               })}
                               className={`w-full pl-10 pr-28 py-3 bg-dark-200 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-casino-gold transition-all ${
                                 errors.phone || smsError ? 'border-red-500' : smsVerified ? 'border-green-500' : 'border-gray-700'
                               }`}
-                              placeholder="+7 999 123-45-67"
+                              placeholder="+7 (___) ___-__-__"
                               disabled={smsVerified}
                             />
                             {!smsVerified && (
