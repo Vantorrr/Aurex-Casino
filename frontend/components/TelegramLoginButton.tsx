@@ -19,7 +19,9 @@ export default function TelegramLoginButton({ botName }: TelegramLoginButtonProp
       onClick={() => {
         const origin = encodeURIComponent(window.location.origin);
         const returnTo = encodeURIComponent(`${window.location.origin}/api/auth/telegram/callback`);
-        window.location.href = `https://oauth.telegram.org/auth?bot_id=${botName}&origin=${origin}&embed=0&request_access=write&return_to=${returnTo}`;
+        // bot_id must be numeric (from bot token before the colon)
+        const botId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID || '8498114168';
+        window.location.href = `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&embed=0&request_access=write&return_to=${returnTo}`;
       }}
       className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#2AABEE] hover:bg-[#229ED9] text-white font-medium rounded-lg transition-colors"
     >
