@@ -706,88 +706,103 @@ router.get('/google/callback', async (req, res) => {
 
 // ===== TELEGRAM LOGIN =====
 
+// Helper: verify Telegram data and find/create user
+async function processTelegramAuth(telegramData) {
+  const { id, first_name, last_name, username: tgUsername, photo_url, auth_date, hash } = telegramData;
+
+  if (!id || !hash || !auth_date) {
+    throw new Error('Неверные данные Telegram');
+  }
+
+  const botToken = config.telegram?.botToken;
+  if (!botToken) {
+    throw new Error('Telegram бот не настроен');
+  }
+
+  const crypto = require('crypto');
+
+  // Create the data-check-string
+  const checkFields = Object.keys(telegramData)
+    .filter(k => k !== 'hash')
+    .sort()
+    .map(k => `${k}=${telegramData[k]}`)
+    .join('\n');
+
+  const secretKey = crypto.createHash('sha256').update(botToken).digest();
+  const hmac = crypto.createHmac('sha256', secretKey).update(checkFields).digest('hex');
+
+  if (hmac !== hash) {
+    throw new Error('Неверная подпись Telegram');
+  }
+
+  // Check auth_date is not too old (allow up to 1 day)
+  const authAge = Math.floor(Date.now() / 1000) - parseInt(auth_date);
+  if (authAge > 86400) {
+    throw new Error('Данные Telegram устарели');
+  }
+
+  const telegramId = String(id);
+
+  // Find existing user by telegram_id
+  let userResult = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
+  let user;
+
+  if (userResult.rows.length > 0) {
+    user = userResult.rows[0];
+    await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
+  } else {
+    // Create new user
+    const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const username = tgUsername || `tg_${randomSuffix}`;
+    const odid = `AUREX-${Date.now().toString(36).toUpperCase()}`;
+    const referralCode = `REF-${username.toUpperCase().slice(0, 6)}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    // Check if username already taken
+    const existingUsername = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    const finalUsername = existingUsername.rows.length > 0 ? `${username}_${randomSuffix}` : username;
+
+    const insertResult = await pool.query(
+      `INSERT INTO users (odid, username, telegram_id, first_name, last_name, referral_code, balance, bonus_balance, vip_level, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 1, true) RETURNING *`,
+      [odid, finalUsername, telegramId, first_name || null, last_name || null, referralCode]
+    );
+    user = insertResult.rows[0];
+  }
+
+  if (!user.is_active) {
+    throw new Error('Аккаунт деактивирован');
+  }
+
+  return user;
+}
+
+// POST /auth/telegram — for AJAX calls
 router.post('/telegram', async (req, res) => {
   try {
-    const telegramData = req.body;
-    const { id, first_name, last_name, username: tgUsername, photo_url, auth_date, hash } = telegramData;
-
-    if (!id || !hash || !auth_date) {
-      return res.status(400).json({ success: false, error: 'Неверные данные Telegram' });
-    }
-
-    // Verify signature
-    const botToken = config.telegram?.botToken;
-    if (!botToken) {
-      return res.status(500).json({ success: false, error: 'Telegram бот не настроен' });
-    }
-
-    const crypto = require('crypto');
-
-    // Create the data-check-string
-    const checkFields = Object.keys(telegramData)
-      .filter(k => k !== 'hash')
-      .sort()
-      .map(k => `${k}=${telegramData[k]}`)
-      .join('\n');
-
-    const secretKey = crypto.createHash('sha256').update(botToken).digest();
-    const hmac = crypto.createHmac('sha256', secretKey).update(checkFields).digest('hex');
-
-    if (hmac !== hash) {
-      return res.status(401).json({ success: false, error: 'Неверная подпись Telegram' });
-    }
-
-    // Check auth_date is not too old (allow up to 1 day)
-    const authAge = Math.floor(Date.now() / 1000) - parseInt(auth_date);
-    if (authAge > 86400) {
-      return res.status(401).json({ success: false, error: 'Данные Telegram устарели' });
-    }
-
-    const telegramId = String(id);
-
-    // Find existing user by telegram_id
-    let userResult = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
-    let user;
-
-    if (userResult.rows.length > 0) {
-      user = userResult.rows[0];
-      await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
-    } else {
-      // Create new user
-      const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
-      const username = tgUsername || `tg_${randomSuffix}`;
-      const odid = `AUREX-${Date.now().toString(36).toUpperCase()}`;
-      const referralCode = `REF-${username.toUpperCase().slice(0, 6)}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-      // Check if username already taken
-      const existingUsername = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-      const finalUsername = existingUsername.rows.length > 0 ? `${username}_${randomSuffix}` : username;
-
-      const insertResult = await pool.query(
-        `INSERT INTO users (odid, username, telegram_id, first_name, last_name, referral_code, balance, bonus_balance, vip_level, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 1, true) RETURNING *`,
-        [odid, finalUsername, telegramId, first_name || null, last_name || null, referralCode]
-      );
-      user = insertResult.rows[0];
-    }
-
-    if (!user.is_active) {
-      return res.status(401).json({ success: false, error: 'Аккаунт деактивирован' });
-    }
-
+    const user = await processTelegramAuth(req.body);
     const token = generateToken(user.id);
-
     res.json({
       success: true,
       message: 'Telegram login successful',
-      data: {
-        user: formatUser(user),
-        token
-      }
+      data: { user: formatUser(user), token }
     });
   } catch (error) {
     console.error('Telegram auth error:', error);
-    res.status(500).json({ success: false, error: 'Telegram auth failed' });
+    res.status(401).json({ success: false, error: error.message || 'Telegram auth failed' });
+  }
+});
+
+// GET /auth/telegram/callback — redirect-based flow (like Google)
+// Telegram widget sends data as query params: ?id=xxx&first_name=xxx&hash=xxx
+router.get('/telegram/callback', async (req, res) => {
+  const frontendUrl = config.server.frontendUrl;
+  try {
+    const user = await processTelegramAuth(req.query);
+    const token = generateToken(user.id);
+    res.redirect(`${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}`);
+  } catch (error) {
+    console.error('Telegram callback error:', error);
+    res.redirect(`${frontendUrl}/login?error=telegram_failed`);
   }
 });
 

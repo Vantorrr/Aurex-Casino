@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ import Image from 'next/image';
 import { useAuthStore } from '../store/authStore';
 import Layout from '../components/Layout';
 import { useTranslation } from '../hooks/useTranslation';
-import TelegramLoginButton, { TelegramUser } from '../components/TelegramLoginButton';
+import TelegramLoginButton from '../components/TelegramLoginButton';
 
 interface LoginForm {
   login: string; // email или username
@@ -29,18 +29,9 @@ interface LoginForm {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginWithTelegram, isLoading, isAuthenticated } = useAuthStore();
+  const { login, isLoading, isAuthenticated } = useAuthStore();
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
-
-  const handleTelegramAuth = useCallback(async (tgUser: TelegramUser) => {
-    try {
-      await loginWithTelegram(tgUser as unknown as Record<string, string>);
-      router.push('/');
-    } catch (e) {
-      // handled by store
-    }
-  }, [loginWithTelegram, router]);
   
   const {
     register,
@@ -245,10 +236,7 @@ export default function LoginPage() {
                     </button>
 
                     {/* Telegram Widget */}
-                    <TelegramLoginButton
-                      botName="aurex_support_bot"
-                      onAuth={handleTelegramAuth}
-                    />
+                    <TelegramLoginButton botName="aurex_support_bot" />
                   </div>
 
                   {/* Register Link */}
