@@ -50,6 +50,12 @@ export default function RegisterPage() {
   const [smsVerified, setSmsVerified] = useState(false);
   const [smsCountdown, setSmsCountdown] = useState(0);
   const [smsError, setSmsError] = useState('');
+  // Email OTP states
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailCountdown, setEmailCountdown] = useState(0);
+  const [emailError, setEmailError] = useState('');
+  const [emailCode, setEmailCode] = useState('');
   
   const {
     register,
@@ -82,6 +88,13 @@ export default function RegisterPage() {
     const timer = setTimeout(() => setSmsCountdown(smsCountdown - 1), 1000);
     return () => clearTimeout(timer);
   }, [smsCountdown]);
+
+  // Email countdown timer
+  useEffect(() => {
+    if (emailCountdown <= 0) return;
+    const timer = setTimeout(() => setEmailCountdown(emailCountdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [emailCountdown]);
 
   const password = watch('password');
   const phoneValue = watch('phone');
@@ -118,9 +131,46 @@ export default function RegisterPage() {
     }
   };
 
+  const emailValue = watch('email');
+
+  const sendEmailCode = async () => {
+    const email = emailValue?.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Введите корректный email');
+      return;
+    }
+    setEmailError('');
+    try {
+      await axios.post('/api/auth/otp/email/send', { email });
+      setEmailCodeSent(true);
+      setEmailCountdown(60);
+    } catch (err: any) {
+      setEmailError(err.response?.data?.error || 'Ошибка отправки кода');
+    }
+  };
+
+  const verifyEmailCode = async () => {
+    const email = emailValue?.trim();
+    if (!emailCode || emailCode.length < 4) {
+      setEmailError('Введите 4-значный код');
+      return;
+    }
+    setEmailError('');
+    try {
+      await axios.post('/api/auth/otp/email/verify', { email, code: emailCode });
+      setEmailVerified(true);
+    } catch (err: any) {
+      setEmailError(err.response?.data?.error || 'Неверный код');
+    }
+  };
+
   const onSubmit = async (data: RegisterForm) => {
     if (regMethod === 'phone' && !smsVerified) {
       setSmsError('Подтвердите номер телефона');
+      return;
+    }
+    if (regMethod === 'email' && !emailVerified) {
+      setEmailError('Подтвердите email');
       return;
     }
     try {
@@ -228,7 +278,7 @@ export default function RegisterPage() {
                       <div className="flex rounded-lg overflow-hidden border border-gray-700 mb-4">
                         <button
                           type="button"
-                          onClick={() => { setRegMethod('phone'); setSmsError(''); }}
+                          onClick={() => { setRegMethod('phone'); setSmsError(''); setEmailError(''); }}
                           className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
                             regMethod === 'phone'
                               ? 'bg-casino-gold text-black'
@@ -240,7 +290,7 @@ export default function RegisterPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setRegMethod('email'); setSmsError(''); }}
+                          onClick={() => { setRegMethod('email'); setSmsError(''); setEmailError(''); }}
                           className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
                             regMethod === 'email'
                               ? 'bg-casino-gold text-black'
@@ -321,9 +371,9 @@ export default function RegisterPage() {
                         </div>
                       )}
 
-                      {/* Email Field */}
+                      {/* Email Field with verification */}
                       {regMethod === 'email' && (
-                        <div>
+                        <div className="space-y-3">
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                             <input
@@ -335,15 +385,57 @@ export default function RegisterPage() {
                                   message: 'Неверный формат email'
                                 }
                               })}
-                              className={`w-full pl-10 pr-4 py-3 bg-dark-200 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-casino-gold transition-all ${
-                                errors.email ? 'border-red-500' : 'border-gray-700'
+                              className={`w-full pl-10 pr-28 py-3 bg-dark-200 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-casino-gold transition-all ${
+                                errors.email || emailError ? 'border-red-500' : emailVerified ? 'border-green-500' : 'border-gray-700'
                               }`}
                               placeholder="example@email.com"
+                              disabled={emailVerified}
                             />
+                            {!emailVerified && (
+                              <button
+                                type="button"
+                                onClick={sendEmailCode}
+                                disabled={emailCountdown > 0}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-casino-gold text-black text-xs font-bold rounded-md hover:bg-casino-gold-dark transition-colors disabled:opacity-50"
+                              >
+                                {emailCountdown > 0 ? `${emailCountdown}с` : emailCodeSent ? 'Ещё раз' : 'Отправить код'}
+                              </button>
+                            )}
+                            {emailVerified && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Check className="w-5 h-5 text-green-500" />
+                              </div>
+                            )}
                           </div>
-                          {errors.email && (
-                            <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>
+
+                          {emailCodeSent && !emailVerified && (
+                            <>
+                              <p className="text-xs text-gray-400 text-center">
+                                Код отправлен на вашу почту. Введите 4-значный код.
+                              </p>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={emailCode}
+                                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                  maxLength={4}
+                                  className="w-full pl-4 pr-28 py-3 bg-dark-200 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-casino-gold transition-all text-center text-lg tracking-widest"
+                                  placeholder="_ _ _ _"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={verifyEmailCode}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-md hover:bg-green-500 transition-colors"
+                                >
+                                  Подтвердить
+                                </button>
+                              </div>
+                            </>
                           )}
+
+                          {emailError && <p className="text-sm text-red-400">{emailError}</p>}
+                          {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
+                          {emailVerified && <p className="text-sm text-green-400">Email подтверждён</p>}
                         </div>
                       )}
                     </div>
