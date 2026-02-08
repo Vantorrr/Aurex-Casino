@@ -539,24 +539,19 @@ router.post('/logout', auth, (req, res) => {
 
 // ===== GOOGLE OAUTH 2.0 =====
 
-// Build Google callback URL — use GOOGLE_CALLBACK_URL or derive from frontend URL
-const getGoogleCallbackUrl = () => {
-  const { callbackUrl } = config.google || {};
-  // If explicitly configured as full URL, use it
-  if (callbackUrl && callbackUrl.startsWith('http')) return callbackUrl;
-  // Otherwise build from frontend URL
-  const frontendUrl = (config.server.frontendUrl || '').replace(/\/$/, '');
-  return `${frontendUrl}/api/auth/google/callback`;
-};
-
 // Step 1: Redirect to Google
 router.get('/google', (req, res) => {
-  const { clientId } = config.google || {};
+  const { clientId, callbackUrl } = config.google || {};
   if (!clientId) {
     return res.status(500).json({ success: false, error: 'Google OAuth не настроен' });
   }
 
-  const fullCallbackUrl = getGoogleCallbackUrl();
+  // Build the full callback URL based on the request
+  const protocol = req.protocol;
+  const host = req.get('host');
+  const fullCallbackUrl = callbackUrl.startsWith('http')
+    ? callbackUrl
+    : `${protocol}://${host}${callbackUrl}`;
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -579,12 +574,16 @@ router.get('/google/callback', async (req, res) => {
       return res.redirect(`${frontendUrl}/login?error=no_code`);
     }
 
-    const { clientId, clientSecret } = config.google || {};
+    const { clientId, clientSecret, callbackUrl } = config.google || {};
     if (!clientId || !clientSecret) {
       return res.redirect(`${frontendUrl}/login?error=oauth_not_configured`);
     }
 
-    const fullCallbackUrl = getGoogleCallbackUrl();
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const fullCallbackUrl = callbackUrl.startsWith('http')
+      ? callbackUrl
+      : `${protocol}://${host}${callbackUrl}`;
 
     // Exchange code for tokens
     const https = require('https');
