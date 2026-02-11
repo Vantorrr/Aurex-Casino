@@ -27,6 +27,9 @@ import PromoBannerSlider from '../../components/PromoBannerSlider';
 import { useGamesQuery } from '../../hooks/useGames';
 import { useTranslation } from '../../hooks/useTranslation';
 
+import CategoryCard from '../../components/CategoryCard';
+import { toast } from 'react-hot-toast';
+
 const categories = [
   { id: 'all', nameKey: 'games.allGames', icon: Grid3X3 },
   { id: 'slots', nameKey: 'games.slots', icon: Gamepad2 },
@@ -164,6 +167,18 @@ export default function GamesPage() {
   const newGames = useMemo(() => allGames.filter(g => g.isNew).slice(0, 10), [allGames]);
   const liveGames = useMemo(() => allGames.filter(g => g.provider?.toLowerCase().includes('evolution') || g.provider?.toLowerCase().includes('live')).slice(0, 10), [allGames]);
 
+  const handleSportClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast.error('Раздел "Спорт" находится в разработке. Скоро открытие!', {
+      style: {
+        background: '#1F2937',
+        color: '#fff',
+        border: '1px solid #D4AF37',
+      },
+      icon: '🚧',
+    });
+  };
+
   return (
     <AuthGuard>
       <Head>
@@ -178,6 +193,42 @@ export default function GamesPage() {
           </div>
 
           <div className="max-w-7xl mx-auto px-4">
+
+            {/* NEW: Dragon Money Style Category Cards (Only on 'all' tab) */}
+            {!searchTerm && selectedCategory === 'all' && selectedProviders.length === 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 -mt-4">
+                {/* SLOTS */}
+                <CategoryCard
+                  title="Слоты"
+                  onlineCount={1420}
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setSelectedCategory('slots'); }}
+                  gradient="bg-gradient-to-br from-indigo-600 to-blue-900"
+                  buttonText="Играть"
+                />
+                
+                {/* SPORT */}
+                <CategoryCard
+                  title="Sport"
+                  onlineCount={312}
+                  href="/sport"
+                  gradient="bg-gradient-to-br from-red-600 to-rose-900"
+                  buttonText="Ставки"
+                  isSport={true}
+                  onClick={handleSportClick}
+                />
+
+                {/* LIVE */}
+                <CategoryCard
+                  title="Live Games"
+                  onlineCount={850}
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setSelectedCategory('live'); }}
+                  gradient="bg-gradient-to-br from-emerald-600 to-teal-900"
+                  buttonText="Live Дилеры"
+                />
+              </div>
+            )}
             
             {/* 2. Category Navigation (Dragon Style Tabs) */}
             <div className="sticky top-20 z-30 bg-aurex-obsidian-900/95 backdrop-blur-md py-4 border-b border-white/5 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-xl md:border md:top-24">
