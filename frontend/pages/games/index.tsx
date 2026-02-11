@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -11,30 +12,36 @@ import {
   Star,
   Clock,
   X,
-  Play
+  Play,
+  Flame,
+  Gamepad2,
+  Trophy,
+  Zap,
+  ChevronRight
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import AuthGuard from '../../components/AuthGuard';
 import GameCard from '../../components/GameCard';
 import GameModal from '../../components/GameModal';
+import PromoBannerSlider from '../../components/PromoBannerSlider';
 import { useGamesQuery } from '../../hooks/useGames';
 import { useTranslation } from '../../hooks/useTranslation';
 
 const categories = [
-  { id: 'all', nameKey: 'games.allGames', count: 0 },
-  { id: 'slots', nameKey: 'games.slots', count: 0 },
-  { id: 'jackpot', nameKey: 'games.jackpot', count: 0 },
-  { id: 'new', nameKey: 'games.new', count: 0 },
-  { id: 'popular', nameKey: 'games.popular', count: 0 },
-  { id: 'table', nameKey: 'games.table', count: 0 },
-  { id: 'live', nameKey: 'games.liveCasino', count: 0 },
+  { id: 'all', nameKey: 'games.allGames', icon: Grid3X3 },
+  { id: 'slots', nameKey: 'games.slots', icon: Gamepad2 },
+  { id: 'live', nameKey: 'games.liveCasino', icon: Zap },
+  { id: 'new', nameKey: 'games.new', icon: Clock },
+  { id: 'popular', nameKey: 'games.popular', icon: Flame },
+  { id: 'jackpot', nameKey: 'games.jackpot', icon: Trophy },
+  { id: 'table', nameKey: 'games.table', icon: List },
 ];
 
 const sortOptions = [
-  { id: 'name', name: 'По алфавиту', icon: List },
   { id: 'popularity', name: 'По популярности', icon: TrendingUp },
-  { id: 'rating', name: 'По рейтингу', icon: Star },
   { id: 'newest', name: 'Сначала новые', icon: Clock },
+  { id: 'rating', name: 'По рейтингу', icon: Star },
+  { id: 'name', name: 'По алфавиту', icon: List },
 ];
 
 export default function GamesPage() {
@@ -44,12 +51,9 @@ export default function GamesPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('popularity');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [minRTP, setMinRTP] = useState(90);
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [providers, setProviders] = useState<string[]>([]);
-
+  
   // Fetch providers from API
   useEffect(() => {
     const fetchProviders = async () => {
@@ -57,7 +61,6 @@ export default function GamesPage() {
         const res = await fetch('/api/config/providers');
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
-          // Handle both string[] and {id, name, logo}[] formats
           const providerNames = data.data.map((p: any) => 
             typeof p === 'string' ? p : p.name
           );
@@ -112,8 +115,13 @@ export default function GamesPage() {
 
     // Category filter
     if (selectedCategory !== 'all') {
-      // This would need to be implemented based on actual game categories
-      // For now, we'll just show all games
+      // Basic category filtering logic
+      if (selectedCategory === 'new') filtered = filtered.filter(g => g.isNew);
+      else if (selectedCategory === 'popular') filtered = filtered.filter(g => g.isHot || (g.popularity || 0) > 80);
+      else if (selectedCategory === 'jackpot') filtered = filtered.filter(g => g.jackpot);
+      // For 'slots', 'live', 'table' - we would need actual category data from API
+      // For now, assume 'slots' is default if not specified, 'live' has 'live' in provider or name
+      else if (selectedCategory === 'live') filtered = filtered.filter(g => g.provider?.toLowerCase().includes('evolution') || g.provider?.toLowerCase().includes('live'));
     }
 
     // Provider filter
@@ -123,30 +131,25 @@ export default function GamesPage() {
       );
     }
 
-    // RTP filter
-    filtered = filtered.filter(game => 
-      (game.rtp || 96) >= minRTP
-    );
-
     // Sort games
     switch (sortBy) {
       case 'name':
         filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         break;
       case 'popularity':
-        // Sort by popularity field (deterministic, no Math.random)
         filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
         break;
       case 'rating':
         filtered.sort((a, b) => (b.rtp || 96) - (a.rtp || 96));
         break;
       case 'newest':
-        filtered.reverse();
+        // Assuming higher ID or isNew flag implies newer
+        filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
         break;
     }
 
     return filtered;
-  }, [allGames, searchTerm, selectedCategory, selectedProviders, sortBy, minRTP]);
+  }, [allGames, searchTerm, selectedCategory, selectedProviders, sortBy]);
 
   const handleProviderToggle = (provider: string) => {
     setSelectedProviders(prev => 
@@ -156,340 +159,253 @@ export default function GamesPage() {
     );
   };
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('all');
-    setSelectedProviders([]);
-    setMinRTP(90);
-    setOnlyFavorites(false);
-  };
+  // Section Data (Mocking sections from allGames)
+  const popularGames = useMemo(() => allGames.filter(g => g.isHot || (g.popularity || 0) > 85).slice(0, 10), [allGames]);
+  const newGames = useMemo(() => allGames.filter(g => g.isNew).slice(0, 10), [allGames]);
+  const liveGames = useMemo(() => allGames.filter(g => g.provider?.toLowerCase().includes('evolution') || g.provider?.toLowerCase().includes('live')).slice(0, 10), [allGames]);
 
   return (
     <AuthGuard>
       <Head>
-        <title>Imperial Game Collection - AUREX</title>
-        <meta name="description" content="Эксклюзивная коллекция премиальных игр в AUREX от ведущих мировых провайдеров. Высокий RTP, Imperial Jackpots." />
+        <title>Игры - AUREX Casino</title>
       </Head>
       <Layout>
-        {/* Hero Block with Background */}
-        <div 
-          className="relative h-96 md:h-[500px] pt-20"
-          style={{
-            backgroundImage: 'url(/images/games-bg.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/80" />
-          <div className="relative z-10 h-full flex items-center">
-            <div className="max-w-7xl mx-auto px-4 w-full">
-              <h1 className="text-4xl md:text-6xl font-black mb-4 text-white drop-shadow-2xl" style={{ fontFamily: 'Cinzel, serif' }}>
-                Imperial Game Collection
-              </h1>
-              <p className="text-xl md:text-2xl text-aurex-platinum-300">
-                Эксклюзивная коллекция из более чем <span className="text-aurex-gold-500 font-bold">{allGames.length > 0 ? allGames.length.toLocaleString('ru-RU') : '...'}</span> премиальных игр
-              </p>
-            </div>
+        <div className="bg-aurex-obsidian-900 min-h-screen pb-20">
+          
+          {/* 1. Promo Slider (Hero) */}
+          <div className="pt-20">
+            <PromoBannerSlider />
           </div>
-        </div>
 
-        {/* Content Section */}
-        <div className="bg-aurex-obsidian-900 min-h-screen pb-12">
-          <div className="max-w-7xl mx-auto px-4 relative z-10 -mt-8">
+          <div className="max-w-7xl mx-auto px-4">
+            
+            {/* 2. Category Navigation (Dragon Style Tabs) */}
+            <div className="sticky top-20 z-30 bg-aurex-obsidian-900/95 backdrop-blur-md py-4 border-b border-white/5 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-xl md:border md:top-24">
+              <div className="flex items-center justify-between gap-4 overflow-x-auto scrollbar-hide pb-2 md:pb-0">
+                <div className="flex gap-2">
+                  {categories.map(cat => {
+                    const Icon = cat.icon;
+                    const isActive = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-300 ${
+                          isActive 
+                            ? 'bg-aurex-gold-500 text-aurex-obsidian-900 shadow-lg shadow-aurex-gold-500/20 scale-105' 
+                            : 'bg-aurex-obsidian-800 text-aurex-platinum-400 hover:bg-aurex-obsidian-700 hover:text-white'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-aurex-obsidian-900' : 'text-aurex-gold-500'}`} />
+                        {t(cat.nameKey)}
+                      </button>
+                    );
+                  })}
+                </div>
 
-            {/* Search and Filters */}
-            <div className="mb-8">
-              <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                {/* Search */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder={t('games.search')}
+                {/* Search & Filter Toggles */}
+                <div className="flex items-center gap-2 pl-4 border-l border-white/10">
+                  <div className="relative hidden md:block">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Поиск игры..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-dark-100 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-casino-gold transition-colors"
+                      className="bg-aurex-obsidian-800 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:border-aurex-gold-500/50 focus:outline-none w-48 lg:w-64 transition-all"
                     />
                   </div>
-                </div>
-
-                {/* Filters Button */}
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden flex items-center space-x-2 px-4 py-3 bg-dark-100 border border-gray-700 rounded-lg text-white hover:border-casino-gold transition-colors"
-                >
-                  <SlidersHorizontal className="w-5 h-5" />
-                  <span>Фильтры</span>
-                </button>
-
-                {/* Sort */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-3 bg-dark-100 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-casino-gold transition-colors"
-                >
-                  {sortOptions.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-
-                {/* View Mode */}
-                <div className="flex rounded-lg border border-gray-700 overflow-hidden">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-3 transition-colors ${
-                      viewMode === 'grid' 
-                        ? 'bg-casino-gold text-black' 
-                        : 'bg-dark-100 text-gray-400 hover:text-white'
-                    }`}
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`p-2.5 rounded-lg border border-white/10 transition-colors ${showFilters ? 'bg-aurex-gold-500 text-black' : 'bg-aurex-obsidian-800 text-gray-400 hover:text-white'}`}
                   >
-                    <Grid3X3 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-3 transition-colors ${
-                      viewMode === 'list' 
-                        ? 'bg-casino-gold text-black' 
-                        : 'bg-dark-100 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <List className="w-5 h-5" />
+                    <SlidersHorizontal className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Categories */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {categories.map(category => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      selectedCategory === category.id
-                        ? 'bg-casino-gold text-black'
-                        : 'bg-dark-100 text-gray-300 hover:text-white hover:bg-dark-200'
-                    }`}
-                  >
-                    {t(category.nameKey)}
-                  </button>
-                ))}
+              {/* Mobile Search (visible only on mobile) */}
+              <div className="mt-4 md:hidden relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Поиск игры..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-aurex-obsidian-800 border border-white/10 rounded-lg pl-9 pr-4 py-3 text-sm text-white focus:border-aurex-gold-500/50 focus:outline-none"
+                />
               </div>
+
+              {/* Expanded Filters */}
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-4 mt-4 border-t border-white/10">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div>
+                          <h4 className="text-white font-bold mb-3 text-sm">Сортировка</h4>
+                          <div className="space-y-2">
+                            {sortOptions.map(opt => (
+                              <button
+                                key={opt.id}
+                                onClick={() => setSortBy(opt.id)}
+                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors ${sortBy === opt.id ? 'bg-white/10 text-aurex-gold-500' : 'text-gray-400 hover:text-white'}`}
+                              >
+                                <opt.icon className="w-4 h-4" />
+                                {opt.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="md:col-span-3">
+                          <h4 className="text-white font-bold mb-3 text-sm">Провайдеры</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                            {providers.map(p => (
+                              <button
+                                key={p}
+                                onClick={() => handleProviderToggle(p)}
+                                className={`px-3 py-2 rounded-lg text-xs text-left truncate transition-colors ${selectedProviders.includes(p) ? 'bg-aurex-gold-500 text-black font-bold' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Filters Sidebar */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="lg:hidden mb-8 bg-dark-100 border border-gray-700 rounded-lg p-6"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white">Фильтры</h3>
-                    <button
-                      onClick={() => setShowFilters(false)}
-                      className="text-gray-400 hover:text-white"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Providers Filter */}
-                  <div className="mb-6">
-                    <h4 className="text-white font-medium mb-3">{t('games.providers')}</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {providers.map(provider => (
-                        <label
-                          key={provider}
-                          className="flex items-center space-x-2 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedProviders.includes(provider)}
-                            onChange={() => handleProviderToggle(provider)}
-                            className="sr-only"
-                          />
-                          <div className="custom-checkbox">
-                            <div className="checkbox-mark"></div>
-                          </div>
-                          <span className="text-gray-300 text-sm">{provider}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RTP Filter */}
-                  <div className="mb-6">
-                    <h4 className="text-white font-medium mb-3">
-                      {t('games.minRtp')}: {minRTP}%
-                    </h4>
-                    <input
-                      type="range"
-                      min="90"
-                      max="99"
-                      value={minRTP}
-                      onChange={(e) => setMinRTP(Number(e.target.value))}
-                      className="w-full accent-casino-gold"
-                    />
-                  </div>
-
-                  {/* Clear Filters */}
-                  <button
-                    onClick={clearFilters}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    {t('games.clearFilters')}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="flex gap-8">
-              {/* Filters Sidebar (Desktop) */}
-              <div className="hidden lg:block w-64 flex-shrink-0">
-                <div className="bg-dark-100 border border-gray-700 rounded-lg p-6 sticky top-24">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white">Фильтры</h3>
-                    <button
-                      onClick={clearFilters}
-                      className="text-sm text-red-400 hover:text-red-300"
-                    >
-                      Очистить
-                    </button>
-                  </div>
-
-                  {/* Providers Filter */}
-                  <div className="mb-6">
-                    <h4 className="text-white font-medium mb-3">{t('games.providers')}</h4>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {providers.map(provider => (
-                        <label
-                          key={provider}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-dark-200 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedProviders.includes(provider)}
-                            onChange={() => handleProviderToggle(provider)}
-                            className="sr-only"
-                          />
-                          <div className="custom-checkbox">
-                            <div className="checkbox-mark"></div>
-                          </div>
-                          <span className="text-gray-300 text-sm">{provider}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RTP Filter */}
-                  <div className="mb-6">
-                    <h4 className="text-white font-medium mb-3">
-                      {t('games.minRtp')}: {minRTP}%
-                    </h4>
-                    <input
-                      type="range"
-                      min="90"
-                      max="99"
-                      value={minRTP}
-                      onChange={(e) => setMinRTP(Number(e.target.value))}
-                      className="w-full accent-casino-gold"
-                    />
-                    <div className="flex justify-between text-xs text-gray-400 mt-1">
-                      <span>90%</span>
-                      <span>99%</span>
-                    </div>
-                  </div>
-
-                  {/* Favorites Filter */}
-                  <div>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={onlyFavorites}
-                        onChange={(e) => setOnlyFavorites(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div className="custom-checkbox">
-                        <div className="checkbox-mark"></div>
+            {/* 3. Game Sections (Dragon Style) */}
+            
+            {/* Only show sections if NO search/filter is active (Default View) */}
+            {!searchTerm && selectedCategory === 'all' && selectedProviders.length === 0 ? (
+              <div className="space-y-12">
+                
+                {/* Popular Section */}
+                <section>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-orange-500/20 rounded-lg text-orange-500">
+                        <Flame className="w-6 h-6" />
                       </div>
-                      <span className="text-gray-300">Только избранные</span>
-                    </label>
+                      <h2 className="text-2xl font-bold text-white">Популярные</h2>
+                    </div>
+                    <button onClick={() => setSelectedCategory('popular')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
+                      Все <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {popularGames.map((game, i) => (
+                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
+                    ))}
+                  </div>
+                </section>
+
+                {/* New Games Section */}
+                <section>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-green-500/20 rounded-lg text-green-500">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-white">Новинки</h2>
+                    </div>
+                    <button onClick={() => setSelectedCategory('new')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
+                      Все <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {newGames.map((game, i) => (
+                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Live Casino Section */}
+                {liveGames.length > 0 && (
+                  <section>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-purple-500/20 rounded-lg text-purple-500">
+                          <Zap className="w-6 h-6" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white">Live Casino</h2>
+                      </div>
+                      <button onClick={() => setSelectedCategory('live')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
+                        Все <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                      {liveGames.map((game, i) => (
+                        <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* All Games Grid (Infinite Scroll style) */}
+                <section>
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="p-2 bg-aurex-gold-500/20 rounded-lg text-aurex-gold-500">
+                      <Grid3X3 className="w-6 h-6" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white">Все игры</h2>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {allGames.slice(0, 20).map((game, i) => (
+                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
+                    ))}
+                  </div>
+                  <div className="mt-8 text-center">
+                    <button 
+                      onClick={() => setSelectedCategory('all')}
+                      className="px-8 py-3 bg-aurex-obsidian-800 border border-white/10 rounded-xl text-white font-bold hover:bg-aurex-obsidian-700 hover:border-aurex-gold-500/50 transition-all"
+                    >
+                      Показать больше игр
+                    </button>
+                  </div>
+                </section>
+
               </div>
-
-              {/* Games Grid */}
-              <div className="flex-1">
-                {/* Results count */}
+            ) : (
+              /* Filtered Results View */
+              <div>
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-gray-300">
-                    {t('games.gamesFound')}: <span className="text-white font-bold">{filteredGames.length}</span>
-                  </p>
+                  <h2 className="text-2xl font-bold text-white">
+                    Результаты поиска <span className="text-aurex-platinum-400 text-lg font-normal ml-2">({filteredGames.length})</span>
+                  </h2>
                 </div>
-
-                {/* Loading */}
-                {isLoading && (
-                  <div className={`grid gap-6 ${
-                    viewMode === 'grid' 
-                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
-                      : 'grid-cols-1'
-                  }`}>
-                    {Array.from({ length: 20 }).map((_, i) => (
-                      <div key={i} className="shimmer h-64 rounded-lg"></div>
+                
+                {filteredGames.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {filteredGames.map((game, i) => (
+                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
                     ))}
                   </div>
-                )}
-
-                {/* Games */}
-                {!isLoading && (
-                  <div className={`grid gap-6 ${
-                    viewMode === 'grid' 
-                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
-                      : 'grid-cols-1 md:grid-cols-2'
-                  }`}>
-                    {filteredGames.map((game, index) => (
-                      <div
-                        key={game.id || index}
-                        className="animate-fade-in"
-                        style={{ animationDelay: index < 20 ? `${index * 30}ms` : '0ms' }}
-                      >
-                        <GameCard 
-                          game={game} 
-                          showRTP={true}
-                          showProvider={viewMode === 'list'}
-                          onPlay={handleGamePlay}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* No results */}
-                {!isLoading && filteredGames.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 bg-dark-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Search className="w-12 h-12 text-gray-400" />
-                    </div>
+                ) : (
+                  <div className="text-center py-20 bg-aurex-obsidian-800/50 rounded-2xl border border-white/5">
+                    <Search className="w-16 h-16 text-aurex-platinum-600 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">Игры не найдены</h3>
-                    <p className="text-gray-400 mb-4">
-                      Попробуйте изменить параметры поиска или фильтры
-                    </p>
-                    <button
-                      onClick={clearFilters}
-                      className="px-6 py-3 bg-casino-gold text-black rounded-lg font-bold hover:bg-casino-gold-dark transition-colors"
+                    <p className="text-aurex-platinum-400">Попробуйте изменить параметры поиска</p>
+                    <button 
+                      onClick={() => { setSearchTerm(''); setSelectedCategory('all'); setSelectedProviders([]); }}
+                      className="mt-6 px-6 py-2 bg-aurex-gold-500 text-black rounded-lg font-bold hover:bg-aurex-gold-400 transition-colors"
                     >
                       Сбросить фильтры
                     </button>
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
           </div>
         </div>
       </Layout>
