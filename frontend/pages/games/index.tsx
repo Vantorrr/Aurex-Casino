@@ -27,7 +27,7 @@ import PromoBannerSlider from '../../components/PromoBannerSlider';
 import { useGamesQuery } from '../../hooks/useGames';
 import { useTranslation } from '../../hooks/useTranslation';
 
-import CategoryCard from '../../components/CategoryCard';
+import GameCategorySection from '../../components/GameCategorySection';
 import { toast } from 'react-hot-toast';
 
 const categories = [
@@ -185,53 +185,83 @@ export default function GamesPage() {
         <title>Игры - AUREX Casino</title>
       </Head>
       <Layout>
-        <div className="bg-aurex-obsidian-900 min-h-screen pb-20">
+        <div className="bg-aurex-obsidian-900 min-h-screen pb-20 relative overflow-hidden">
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 opacity-30 bg-cover bg-center bg-fixed"
+            style={{ backgroundImage: 'url(/images/games-bg.jpg)' }}
+          ></div>
+
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-aurex-obsidian-900/50 to-aurex-obsidian-900"></div>
           
-          {/* 1. Promo Slider (Hero) */}
-          <div className="pt-20">
-            <PromoBannerSlider />
-          </div>
+          {/* Content */}
+          <div className="relative z-10">
+            {/* 1. Promo Slider (Hero) */}
+            <div className="pt-20">
+              <PromoBannerSlider />
+            </div>
 
-          <div className="max-w-7xl mx-auto px-4">
+            <div className="max-w-7xl mx-auto px-4 mt-8">
 
-            {/* NEW: Dragon Money Style Category Cards (Only on 'all' tab) */}
+            {/* NEW: Dragon Money Style Category Sections (Wide blocks with game previews) */}
             {!searchTerm && selectedCategory === 'all' && selectedProviders.length === 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 -mt-4">
-                {/* SLOTS */}
-                <CategoryCard
+              <div className="space-y-6 mb-12">
+                
+                {/* SLOTS - Wide Block */}
+                <GameCategorySection
                   title="Слоты"
-                  onlineCount={1420}
+                  onlineCount={1773}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); setSelectedCategory('slots'); }}
-                  gradient="bg-gradient-to-br from-indigo-600 to-blue-900"
+                  onClick={(e) => { e.preventDefault(); setSelectedCategory('slots'); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                  backgroundImage="/images/slots-bg.jpg"
+                  gameImages={[
+                    '/images/games/slots/big-bamboo.png',
+                    '/images/games/slots/gates-of-olympus.png',
+                    '/images/games/slots/sweet-bonanza.png',
+                    '/images/games/slots/chaos-crew.png'
+                  ]}
                   buttonText="Играть"
                 />
-                
-                {/* SPORT */}
-                <CategoryCard
-                  title="Sport"
-                  onlineCount={312}
-                  href="/sport"
-                  gradient="bg-gradient-to-br from-red-600 to-rose-900"
-                  buttonText="Ставки"
-                  isSport={true}
-                  onClick={handleSportClick}
+
+                {/* LIVE DEALERS - Wide Block */}
+                <GameCategorySection
+                  title="Live Dealers"
+                  onlineCount={1773}
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setSelectedCategory('live'); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                  backgroundImage="/images/live-bg.jpg"
+                  gameImages={[
+                    '/images/games/live/lightning-roulette.png',
+                    '/images/games/live/crazy-time.png',
+                    '/images/games/live/blackjack.png',
+                    '/images/games/live/monopoly.png'
+                  ]}
+                  buttonText="Играть"
                 />
 
-                {/* LIVE */}
-                <CategoryCard
-                  title="Live Games"
-                  onlineCount={850}
+                {/* SPORT - Wide Block */}
+                <GameCategorySection
+                  title="Спорт"
+                  onlineCount={1773}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); setSelectedCategory('live'); }}
-                  gradient="bg-gradient-to-br from-emerald-600 to-teal-900"
-                  buttonText="Live Дилеры"
+                  onClick={handleSportClick}
+                  backgroundImage="/images/sport-bg.jpg"
+                  gameImages={[
+                    '/images/games/sport/football.png',
+                    '/images/games/sport/basketball.png',
+                    '/images/games/sport/tennis.png',
+                    '/images/games/sport/hockey.png'
+                  ]}
+                  buttonText="Играть"
                 />
+
               </div>
             )}
             
-            {/* 2. Category Navigation (Dragon Style Tabs) */}
-            <div className="sticky top-20 z-30 bg-aurex-obsidian-900/95 backdrop-blur-md py-4 border-b border-white/5 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-xl md:border md:top-24">
+            {/* 2. Category Navigation (Dragon Style Tabs) - ONLY show when user selected a category */}
+            {(searchTerm || selectedCategory !== 'all' || selectedProviders.length > 0) && (
+              <div className="sticky top-20 z-30 bg-aurex-obsidian-900/95 backdrop-blur-md py-4 border-b border-white/5 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-xl md:border md:top-24">
               <div className="flex items-center justify-between gap-4 overflow-x-auto scrollbar-hide pb-2 md:pb-0">
                 <div className="flex gap-2">
                   {categories.map(cat => {
@@ -333,100 +363,12 @@ export default function GamesPage() {
                 )}
               </AnimatePresence>
             </div>
+            )}
 
-            {/* 3. Game Sections (Dragon Style) */}
+            {/* 3. Game Sections - REMOVED per user request */}
             
-            {/* Only show sections if NO search/filter is active (Default View) */}
-            {!searchTerm && selectedCategory === 'all' && selectedProviders.length === 0 ? (
-              <div className="space-y-12">
-                
-                {/* Popular Section */}
-                <section>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-orange-500/20 rounded-lg text-orange-500">
-                        <Flame className="w-6 h-6" />
-                      </div>
-                      <h2 className="text-2xl font-bold text-white">Популярные</h2>
-                    </div>
-                    <button onClick={() => setSelectedCategory('popular')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
-                      Все <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {popularGames.map((game, i) => (
-                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
-                    ))}
-                  </div>
-                </section>
-
-                {/* New Games Section */}
-                <section>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-green-500/20 rounded-lg text-green-500">
-                        <Clock className="w-6 h-6" />
-                      </div>
-                      <h2 className="text-2xl font-bold text-white">Новинки</h2>
-                    </div>
-                    <button onClick={() => setSelectedCategory('new')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
-                      Все <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {newGames.map((game, i) => (
-                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
-                    ))}
-                  </div>
-                </section>
-
-                {/* Live Casino Section */}
-                {liveGames.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-purple-500/20 rounded-lg text-purple-500">
-                          <Zap className="w-6 h-6" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-white">Live Casino</h2>
-                      </div>
-                      <button onClick={() => setSelectedCategory('live')} className="text-sm text-aurex-platinum-400 hover:text-white flex items-center gap-1 transition-colors">
-                        Все <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                      {liveGames.map((game, i) => (
-                        <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* All Games Grid (Infinite Scroll style) */}
-                <section>
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="p-2 bg-aurex-gold-500/20 rounded-lg text-aurex-gold-500">
-                      <Grid3X3 className="w-6 h-6" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">Все игры</h2>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {allGames.slice(0, 20).map((game, i) => (
-                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
-                    ))}
-                  </div>
-                  <div className="mt-8 text-center">
-                    <button 
-                      onClick={() => setSelectedCategory('all')}
-                      className="px-8 py-3 bg-aurex-obsidian-800 border border-white/10 rounded-xl text-white font-bold hover:bg-aurex-obsidian-700 hover:border-aurex-gold-500/50 transition-all"
-                    >
-                      Показать больше игр
-                    </button>
-                  </div>
-                </section>
-
-              </div>
-            ) : (
+            {/* Show ONLY filtered results when user searches/filters */}
+            {searchTerm || selectedCategory !== 'all' || selectedProviders.length > 0 ? (
               /* Filtered Results View */
               <div>
                 <div className="flex items-center justify-between mb-6">
@@ -455,8 +397,9 @@ export default function GamesPage() {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
 
+            </div>
           </div>
         </div>
       </Layout>
