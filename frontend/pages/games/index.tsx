@@ -123,11 +123,13 @@ export default function GamesPage() {
     if (selectedCategory !== 'all') {
       // Basic category filtering logic
       if (selectedCategory === 'new') filtered = filtered.filter(g => g.isNew);
-      else if (selectedCategory === 'popular') filtered = filtered.filter(g => g.isHot || (g.popularity || 0) > 80);
+      else if (selectedCategory === 'popular') filtered = filtered.slice(0, 200); // Already sorted by popularity from backend
       else if (selectedCategory === 'jackpot') filtered = filtered.filter(g => g.jackpot);
       // For 'slots', 'live', 'table' - we would need actual category data from API
       // For now, assume 'slots' is default if not specified, 'live' has 'live' in provider or name
-      else if (selectedCategory === 'live') filtered = filtered.filter(g => g.provider?.toLowerCase().includes('evolution') || g.provider?.toLowerCase().includes('live'));
+      else if (selectedCategory === 'slots') filtered = filtered.filter(g => g.category === 'slots');
+      else if (selectedCategory === 'live') filtered = filtered.filter(g => g.category === 'live');
+      else if (selectedCategory === 'table') filtered = filtered.filter(g => g.category === 'table');
     }
 
     // Provider filter
@@ -143,13 +145,12 @@ export default function GamesPage() {
         filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         break;
       case 'popularity':
-        filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        // Already sorted by backend (provider tier + Fundist sort)
         break;
       case 'rating':
-        filtered.sort((a, b) => (b.rtp || 96) - (a.rtp || 96));
+        filtered.sort((a, b) => (b.rtp || 0) - (a.rtp || 0));
         break;
       case 'newest':
-        // Assuming higher ID or isNew flag implies newer
         filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
         break;
     }
@@ -193,7 +194,7 @@ export default function GamesPage() {
   const visibleGames = useMemo(() => filteredGames.slice(0, visibleCount), [filteredGames, visibleCount]);
 
   // Section Data (Mocking sections from allGames)
-  const popularGames = useMemo(() => allGames.filter(g => g.isHot || (g.popularity || 0) > 85).slice(0, 10), [allGames]);
+  const popularGames = useMemo(() => allGames.slice(0, 10), [allGames]); // Already sorted by provider tier
   const newGames = useMemo(() => allGames.filter(g => g.isNew).slice(0, 10), [allGames]);
   const liveGames = useMemo(() => allGames.filter(g => g.provider?.toLowerCase().includes('evolution') || g.provider?.toLowerCase().includes('live')).slice(0, 10), [allGames]);
 

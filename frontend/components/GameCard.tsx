@@ -10,11 +10,12 @@ interface Game {
   image?: string;
   imageUrl?: string;
   rtp?: number;
+  maxMultiplier?: number;
   category?: string;
   isNew?: boolean;
   isHot?: boolean;
   jackpot?: number;
-  popularity?: number;
+  sortScore?: number;
   mode?: 'demo' | 'real';
 }
 
@@ -167,28 +168,30 @@ export default function GameCard({ game, onPlay, onFavorite, isFavorite = false 
       </div>
 
       {/* Game Info */}
-      <div className="p-4">
-        <h3 className="font-bold text-white text-sm mb-2 truncate">{game.name}</h3>
-        <div className="flex items-center justify-between text-xs text-gray-400">
+      <div className="p-3">
+        <h3 className="font-bold text-white text-sm mb-1.5 truncate">{game.name}</h3>
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
           <span className="truncate">{game.provider}</span>
-          {game.rtp && (
-            <div className="flex items-center gap-1 text-casino-gold">
-              <Star className="w-3 h-3 fill-current" />
-              <span className="font-medium">{game.rtp}%</span>
-            </div>
-          )}
         </div>
-        {game.popularity && (
-          <div className="mt-2">
-            <div className="w-full bg-gray-700 rounded-full h-1">
-              <div 
-                className="bg-casino-gold h-1 rounded-full transition-all duration-500" 
-                style={{ width: `${game.popularity}%` }}
-              />
+        {/* RTP + Max Win row */}
+        <div className="flex items-center gap-2 text-xs">
+          {game.rtp ? (
+            <div className="flex items-center gap-1 bg-gray-800/80 rounded px-1.5 py-0.5">
+              <span className="text-gray-500">RTP</span>
+              <span className={`font-semibold ${game.rtp >= 96 ? 'text-green-400' : game.rtp >= 94 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                {game.rtp.toFixed(1)}%
+              </span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">{t('games.popularity')}: {game.popularity}%</div>
-          </div>
-        )}
+          ) : null}
+          {game.maxMultiplier ? (
+            <div className="flex items-center gap-1 bg-gray-800/80 rounded px-1.5 py-0.5">
+              <span className="text-gray-500">Max</span>
+              <span className="font-semibold text-casino-gold">
+                x{game.maxMultiplier >= 1000 ? `${(game.maxMultiplier / 1000).toFixed(0)}K` : game.maxMultiplier.toFixed(0)}
+              </span>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

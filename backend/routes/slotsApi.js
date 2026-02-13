@@ -61,6 +61,48 @@ router.get('/games', async (req, res) => {
     if (apiData.merchants) console.log('Merchants count:', Object.keys(apiData.merchants).length);
 
     const merchants = apiData.merchants || {};
+
+    // Provider tier system — top providers get shown first
+    const providerTier = {
+      // Tier 1 — most popular worldwide
+      '960': 1, // PragmaticPlay
+      '998': 1, // Evolution
+      '944': 1, // PlaynGo
+      '953': 1, // Yggdrasil
+      '997': 1, // MG (Microgaming/GamesGlobal)
+      '421': 1, // NetEntOSS
+      '940': 1, // EvoPlay
+      '935': 1, // RelaxGaming
+      '939': 1, // PGSoft
+      '920': 1, // Thunderkick
+      // Tier 2 — well-known
+      '991': 2, // BetSoft
+      '976': 2, // Habanero
+      '969': 2, // Quickspin
+      '963': 2, // ISoftBet
+      '943': 2, // PlaysonDirect
+      '941': 2, // Wazdan
+      '938': 2, // NoLimitCity
+      '925': 2, // ELKStudios
+      '924': 2, // Booongo
+      '949': 2, // Platipus
+      '901': 2, // BGaming
+      '850': 2, // HacksawGaming
+      '899': 2, // MascotGaming
+      '895': 2, // Spribe
+      '955': 2, // GameArt
+      // Tier 3 — decent
+      '307': 3, // Novomatic
+      '987': 3, // TomHorn
+      '986': 3, // MrSlotty
+      '979': 3, // WorldMatch
+      '977': 3, // BoomingGames
+      '975': 3, // AmaticDirect
+      '917': 3, // Stakelogic
+      '910': 3, // RedRakeGaming
+      '879': 3, // Gamzix
+      '869': 3, // SmartSoft
+    };
     
     if (apiData.games && Array.isArray(apiData.games)) {
       apiData.games.forEach(game => {
@@ -79,7 +121,6 @@ router.get('/games', async (req, res) => {
         // Handle image: FullList has ImageFullPath, List has ImageURL (relative)
         let imageUrl = game.ImageFullPath;
         if (!imageUrl && game.ImageURL) {
-          // ImageURL is relative, e.g. /gstatic/games/foo.jpg → https://agstatic.com/games/foo.jpg
           const rel = game.ImageURL.replace(/^\/gstatic/, '');
           imageUrl = `https://agstatic.com${rel}`;
         }
@@ -87,9 +128,22 @@ router.get('/games', async (req, res) => {
           ? `/api/slots/img?u=${encodeURIComponent(String(imageUrl))}`
           : undefined;
 
-        // Handle name: FullList/Sorting has Name: {en:...}, List has Trans: {en:...}
+        // Handle name
         const nameObj = game.Name || game.Trans || {};
         const gameName = (typeof nameObj === 'string') ? nameObj : (nameObj.en || nameObj.ru || Object.values(nameObj)[0] || 'Unknown');
+
+        // RTP
+        const rtp = parseFloat(game.RTP) || null;
+
+        // Max win multiplier
+        const maxMultiplier = parseFloat(game.MaxMultiplier) || null;
+
+        // Provider tier for sorting (1 = best, 5 = unknown)
+        const tier = providerTier[merchantId] || 5;
+        // Fundist Sort — lower = more important
+        const fundistSort = parseInt(game.Sort || game.GSort || '999999', 10);
+        // Combined score: tier * 1000000 + fundistSort (lower = better)
+        const sortScore = tier * 1000000 + Math.min(fundistSort, 999999);
 
         processedGames.push({
           id: game.PageCode,
@@ -100,9 +154,14 @@ router.get('/games', async (req, res) => {
           category: determineCategory(game, categoriesMap),
           hasDemo: game.hasDemo === '1' || game.HasDemo === '1',
           isNew: false,
-          popularity: parseInt(game.GSort || game.Sort || '0', 10) || 0
+          rtp,
+          maxMultiplier,
+          sortScore
         });
       });
+
+      // Sort: best providers first, then by Fundist sort within each tier
+      processedGames.sort((a, b) => a.sortScore - b.sortScore);
     }
     
     res.json({ 
