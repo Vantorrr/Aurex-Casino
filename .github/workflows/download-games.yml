@@ -1,0 +1,71 @@
+name: Download Fundist Game Catalog
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate API URL and download Game/FullList
+        run: |
+          TID="gh_$(date +%s)"
+          HASH=$(echo -n "Game/FullList/0.0.0.0/${TID}/437e6b584169d07e82f9a1c13339baf8/0708739935452648" | md5sum | cut -d' ' -f1)
+          URL="https://apitest.fundist.org/System/Api/437e6b584169d07e82f9a1c13339baf8/Game/FullList/?&TID=${TID}&Hash=${HASH}"
+          
+          echo "Downloading Game/FullList..."
+          curl -sS --max-time 300 --retry 3 --retry-delay 10 -o /tmp/fundist-full-list.json "$URL"
+          
+          SIZE=$(wc -c < /tmp/fundist-full-list.json)
+          echo "Downloaded: ${SIZE} bytes"
+          
+          # Validate JSON
+          python3 -c "
+          import json
+          data = json.load(open('/tmp/fundist-full-list.json'))
+          games = data.get('games', [])
+          cats = data.get('categories', [])
+          merchants = data.get('merchants', {})
+          print(f'Games: {len(games)}')
+          print(f'Categories: {len(cats)}')
+          print(f'Merchants: {len(merchants)}')
+          "
+          
+          # Copy to repo
+          mkdir -p backend/data
+          cp /tmp/fundist-full-list.json backend/data/fundist-full-list.json
+
+      - name: Also download Game/List
+        run: |
+          TID="gh_list_$(date +%s)"
+          HASH=$(echo -n "Game/List/0.0.0.0/${TID}/437e6b584169d07e82f9a1c13339baf8/0708739935452648" | md5sum | cut -d' ' -f1)
+          URL="https://apitest.fundist.org/System/Api/437e6b584169d07e82f9a1c13339baf8/Game/List/?&TID=${TID}&Hash=${HASH}"
+          
+          echo "Downloading Game/List..."
+          curl -sS --max-time 300 --retry 3 --retry-delay 10 -o /tmp/fundist-game-list.json "$URL"
+          
+          SIZE=$(wc -c < /tmp/fundist-game-list.json)
+          echo "Downloaded: ${SIZE} bytes"
+          
+          python3 -c "
+          import json
+          data = json.load(open('/tmp/fundist-game-list.json'))
+          print(f'Game/List games: {len(data)}')
+          "
+
+      - name: Commit game catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/data/fundist-full-list.json
+          git diff --staged --quiet || git commit -m "chore: download full Fundist game catalog via GitHub Actions"
+          git push
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fundist-game-catalog
+          path: backend/data/fundist-full-list.json
+          retention-days: 30
