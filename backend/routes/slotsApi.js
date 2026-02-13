@@ -205,6 +205,42 @@ router.get('/img', async (req, res) => {
   }
 });
 
+// Quick diagnostic: test Fundist API connectivity + show server external IP
+router.get('/catalog/diag', async (req, res) => {
+  const https = require('https');
+  const results = {};
+
+  // 1) Get external IP
+  const getIP = () => new Promise((resolve) => {
+    https.get('https://api.ipify.org', { timeout: 5000 }, (r) => {
+      let b = ''; r.on('data', c => b += c); r.on('end', () => resolve(b.trim()));
+    }).on('error', () => resolve('unknown'));
+  });
+
+  // 2) Test Fundist Game/Categories (small request)
+  const testFundist = () => new Promise((resolve) => {
+    try {
+      const crypto = require('crypto');
+      const config = require('../config/config');
+      const tid = 'diag_' + Date.now();
+      const ip = '0.0.0.0';
+      const key = config.slotsApi.apiKey;
+      const pwd = config.slotsApi.apiPassword;
+      const hashStr = 'Game/Categories/' + ip + '/' + tid + '/' + key + '/' + pwd;
+      const hash = crypto.createHash('md5').update(hashStr).digest('hex');
+      const url = config.slotsApi.baseUrl + '/System/Api/' + key + '/Game/Categories/?&TID=' + tid + '&Hash=' + hash;
+      https.get(url, { timeout: 10000, family: 4 }, (r) => {
+        let b = ''; r.on('data', c => b += c); r.on('end', () => resolve(b.substring(0, 500)));
+      }).on('error', (e) => resolve('ERROR: ' + e.message));
+    } catch (e) { resolve('ERROR: ' + e.message); }
+  });
+
+  results.externalIP = await getIP();
+  results.fundistTest = await testFundist();
+  results.fundistOK = !results.fundistTest.startsWith('12,') && !results.fundistTest.startsWith('ERROR');
+  return res.json({ success: true, data: results });
+});
+
 // Fundist catalog status (debug/ops)
 router.get('/catalog/status', async (req, res) => {
   try {
