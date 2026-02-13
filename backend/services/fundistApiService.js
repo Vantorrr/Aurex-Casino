@@ -364,11 +364,12 @@ class FundistApiService {
         : {
             UserAutoCreate: '1',
             Currency: String(currency),
-            Country: 'RUS',
+            Country: user.country || 'UZB',
             Nick: user.username
           }),
       ...(opts.extParam ? { ExtParam: String(opts.extParam) } : {}),
-      ...(opts.referer ? { Referer: String(opts.referer) } : {})
+      ...(opts.referer ? { Referer: String(opts.referer) } : {}),
+      ...(opts.isMobile ? { IsMobile: '1' } : {})
     });
 
     const url = `${this.baseUrl}/System/Api/${this.apiKey}/User/AuthHTML/?&${params.toString()}`;

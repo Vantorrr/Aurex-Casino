@@ -277,9 +277,12 @@ router.post('/catalog/upload', express.json({ limit: '100mb' }), async (req, res
 // Start game session
 router.post('/start-game', auth, async (req, res) => {
   try {
-    const { gameCode, systemId: systemIdFromClient, currency = 'RUB', language = 'en', mode = 'real' } = req.body;
+    const { gameCode, systemId: systemIdFromClient, language = 'en', mode = 'real' } = req.body;
     const userId = req.user.id;
-    const userIp = req.ip || '0.0.0.0';
+    // Use the user's actual currency from DB, fallback to request body, then USD
+    const currency = req.body.currency || req.user.currency || 'USD';
+    // Get real user IP behind proxy (Railway, nginx, etc.)
+    const userIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '0.0.0.0';
 
     if (!gameCode) {
       return res.status(400).json({ success: false, error: 'Missing gameCode' });
@@ -304,15 +307,32 @@ router.post('/start-game', auth, async (req, res) => {
 
     const extParam = `aurex_${userId}_${Date.now()}`;
     const referer = req.headers.referer || '';
+    // Detect mobile from user-agent
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    const isMobile = /mobile|android|iphone|ipad|ipod|webos|blackberry/i.test(ua);
+
+    // Use MobilePageCode if on mobile device
+    let effectiveGameCode = gameCode;
+    if (isMobile && !systemIdFromClient) {
+      const apiData = await fundistService.getGamesList();
+      const game = Array.isArray(apiData?.games)
+        ? apiData.games.find((g) =>
+            String(g.PageCode) === String(gameCode) || String(g.ID) === String(gameCode)
+          )
+        : null;
+      if (game?.MobilePageCode) {
+        effectiveGameCode = game.MobilePageCode;
+      }
+    }
 
     const gameData = await fundistService.startGameSession(
       userId,
-      gameCode,
+      effectiveGameCode,
       resolvedSystemId,
       currency,
       userIp,
       language,
-      { extParam, referer, demo: mode === 'demo' }
+      { extParam, referer, demo: mode === 'demo', isMobile }
     );
     
     res.json({ success: true, data: gameData });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -164,6 +164,33 @@ export default function GamesPage() {
         : [...prev, provider]
     );
   };
+
+  // Infinite scroll: show games in batches of 40
+  const GAMES_PER_PAGE = 40;
+  const [visibleCount, setVisibleCount] = useState(GAMES_PER_PAGE);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(GAMES_PER_PAGE);
+  }, [searchTerm, selectedCategory, selectedProviders, sortBy]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredGames.length) {
+          setVisibleCount(prev => Math.min(prev + GAMES_PER_PAGE, filteredGames.length));
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredGames.length]);
+
+  const visibleGames = useMemo(() => filteredGames.slice(0, visibleCount), [filteredGames, visibleCount]);
 
   // Section Data (Mocking sections from allGames)
   const popularGames = useMemo(() => allGames.filter(g => g.isHot || (g.popularity || 0) > 85).slice(0, 10), [allGames]);
@@ -399,11 +426,24 @@ export default function GamesPage() {
                 </div>
                 
                 {filteredGames.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filteredGames.map((game, i) => (
-                      <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {visibleGames.map((game, i) => (
+                        <GameCard key={game.id || i} game={game} onPlay={handleGamePlay} />
+                      ))}
+                    </div>
+                    {/* Infinite scroll sentinel */}
+                    {visibleCount < filteredGames.length && (
+                      <div ref={loadMoreRef} className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-aurex-gold-500"></div>
+                      </div>
+                    )}
+                    {visibleCount >= filteredGames.length && filteredGames.length > GAMES_PER_PAGE && (
+                      <div className="text-center py-6 text-aurex-platinum-500 text-sm">
+                        Показано {filteredGames.length} игр
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="text-center py-20 bg-aurex-obsidian-800/50 rounded-2xl border border-white/5">
                     <Search className="w-16 h-16 text-aurex-platinum-600 mx-auto mb-4" />

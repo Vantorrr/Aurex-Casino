@@ -12,8 +12,8 @@ export const useGamesQuery = () => {
       return result;
     },
     {
-      staleTime: 0,
-      cacheTime: 0
+      staleTime: 5 * 60 * 1000, // 5 min — catalog changes rarely
+      cacheTime: 10 * 60 * 1000
     }
   );
 };

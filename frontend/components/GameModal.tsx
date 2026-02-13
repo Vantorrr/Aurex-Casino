@@ -16,34 +16,44 @@ export default function GameModal({ isOpen, onClose, game, mode, onModeChange }:
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gameHtml, setGameHtml] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const { user } = useAuthStore();
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      // On mobile, go fullscreen by default for better UX
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) setIsFullscreen(true);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'F11') {
-        e.preventDefault();
-        setIsFullscreen(!isFullscreen);
-      }
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'F11') { e.preventDefault(); setIsFullscreen(f => !f); }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFullscreen, onClose]);
+  }, [isOpen, onClose]);
 
+  // Fetch game HTML from backend
   useEffect(() => {
     const run = async () => {
       if (!game || !isOpen) return;
       setIsLoading(true);
       setGameHtml('');
+      setLoadError('');
 
       try {
-        const currency = (user as any)?.currency || 'RUB';
+        const currency = (user as any)?.currency || 'USD';
         const resp = await axios.post('/api/slots/start-game', {
           gameCode: game.id,
           systemId: (game as any).systemId,
@@ -53,12 +63,13 @@ export default function GameModal({ isOpen, onClose, game, mode, onModeChange }:
         });
 
         const html = resp.data?.data?.html;
-        if (!html) throw new Error('No HTML fragment received');
-
+        if (!html) throw new Error('Сервер не вернул HTML-фрагмент');
         setGameHtml(html);
       } catch (e: any) {
         console.error('Failed to start game:', e);
-        toast.error(e?.response?.data?.error || e?.message || 'Не удалось запустить игру');
+        const msg = e?.response?.data?.error || e?.message || 'Не удалось запустить игру';
+        setLoadError(msg);
+        toast.error(msg);
       } finally {
         setIsLoading(false);
       }
@@ -67,145 +78,114 @@ export default function GameModal({ isOpen, onClose, game, mode, onModeChange }:
     run();
   }, [game, mode, isOpen, user]);
 
-  // Inject HTML and execute scripts (Fundist AuthHTML returns HTML fragment with scripts)
+  // Write HTML into a sandboxed iframe (avoids CSP issues, works on mobile)
   useEffect(() => {
-    if (!isOpen || !gameHtml) return;
-    const el = containerRef.current;
-    if (!el) return;
+    if (!isOpen || !gameHtml || !iframeRef.current) return;
+    const iframe = iframeRef.current;
+    
+    // Build a full HTML document for the iframe
+    const doc = `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000}</style>
+</head><body>${gameHtml}</body></html>`;
 
-    // Reset
-    el.innerHTML = gameHtml;
-
-    // Recreate scripts so they execute
-    const scripts = Array.from(el.querySelectorAll('script'));
-    for (const oldScript of scripts) {
-      const s = document.createElement('script');
-      for (const attr of Array.from(oldScript.attributes)) {
-        s.setAttribute(attr.name, attr.value);
-      }
-      if (oldScript.textContent) s.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(s, oldScript);
-    }
+    // Use srcdoc for inline HTML — bypasses CSP restrictions on script-src
+    iframe.srcdoc = doc;
   }, [isOpen, gameHtml]);
 
-  // Golden Drops - выпадает только во время РЕАЛЬНОЙ игры (не демо)
+  // Golden Drops — only during real play
   useEffect(() => {
     if (!isOpen || mode !== 'real' || !user) return;
-
-    // Проверяем шанс Golden Drop каждые 2 минуты активной игры
     const interval = setInterval(() => {
       if (typeof (window as any).triggerGoldenDrop === 'function') {
         (window as any).triggerGoldenDrop();
       }
-    }, 120000); // 2 минуты
-
+    }, 120000);
     return () => clearInterval(interval);
   }, [isOpen, mode, user]);
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
-  const handleModeSwitch = (newMode: 'demo' | 'real') => {
-    onModeChange(newMode);
-  };
+  const toggleFullscreen = () => setIsFullscreen(f => !f);
+  const handleModeSwitch = (newMode: 'demo' | 'real') => onModeChange(newMode);
 
   if (!isOpen || !game) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-black">
       <div className={`
-        bg-dark-200 rounded-lg overflow-hidden transition-all duration-300
+        flex flex-col bg-black overflow-hidden transition-all duration-200
         ${isFullscreen 
-          ? 'fixed inset-4' 
-          : 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] max-w-6xl'
+          ? 'fixed inset-0' 
+          : 'fixed inset-0 md:inset-4 md:rounded-lg'
         }
       `}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-dark-100 border-b border-gray-800">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-bold text-white">{game?.name || 'Игра'}</h2>
-            <span className="text-sm text-gray-400">{game?.provider || ''}</span>
+        {/* Header — compact on mobile */}
+        <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 bg-gray-900/95 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-sm md:text-lg font-bold text-white truncate">{game?.name || 'Игра'}</h2>
+            <span className="text-xs text-gray-500 hidden md:inline">{game?.provider || ''}</span>
           </div>
           
-          {/* Mode Switch */}
-          <div className="flex items-center space-x-2">
-            <div className="flex bg-dark-300 rounded-lg p-1">
+          {/* Mode Switch — smaller on mobile */}
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <div className="flex bg-gray-800 rounded-lg p-0.5">
               <button
                 onClick={() => handleModeSwitch('demo')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === 'demo'
-                    ? 'bg-casino-gold text-black'
-                    : 'text-gray-400 hover:text-white'
+                className={`px-2 md:px-4 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-medium transition-colors ${
+                  mode === 'demo' ? 'bg-yellow-500 text-black' : 'text-gray-400'
                 }`}
               >
-                <Play className="w-4 h-4 inline mr-1" />
                 Демо
               </button>
               <button
                 onClick={() => handleModeSwitch('real')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === 'real'
-                    ? 'bg-casino-purple text-white'
-                    : 'text-gray-400 hover:text-white'
+                className={`px-2 md:px-4 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-medium transition-colors ${
+                  mode === 'real' ? 'bg-purple-600 text-white' : 'text-gray-400'
                 }`}
               >
-                <DollarSign className="w-4 h-4 inline mr-1" />
                 Реальные
               </button>
             </div>
-          </div>
 
-          {/* Controls */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-              title={isFullscreen ? 'Свернуть' : 'На весь экран'}
-            >
-              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            <button onClick={toggleFullscreen} className="p-1.5 md:p-2 text-gray-400 hover:text-white hidden md:block">
+              {isFullscreen ? <Minimize2 className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize2 className="w-4 h-4 md:w-5 md:h-5" />}
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-              title="Закрыть"
-            >
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="p-1.5 md:p-2 text-gray-400 hover:text-white">
+              <X className="w-5 h-5 md:w-6 md:h-6" />
             </button>
           </div>
         </div>
 
-        {/* Game Frame */}
-        <div className="flex-1 relative" style={{ height: isFullscreen ? 'calc(100vh - 200px)' : 'calc(80vh - 120px)' }}>
-          {!isLoading && gameHtml ? (
-            <div ref={containerRef} className="w-full h-full" />
-          ) : (
+        {/* Game Frame — takes all remaining space */}
+        <div className="flex-1 relative bg-black min-h-0">
+          {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-casino-gold mx-auto mb-4"></div>
-                <p className="text-gray-400">Загрузка игры...</p>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-500 mx-auto mb-3"></div>
+                <p className="text-gray-400 text-sm">Загрузка игры...</p>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Footer Info */}
-        <div className="p-3 bg-dark-100 border-t border-gray-800">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center space-x-4 text-gray-400">
-              {game?.rtp && <span>RTP: {game.rtp}%</span>}
-              {game?.lines && <span>Линии: {game.lines}</span>}
-              {mode === 'demo' && (
-                <span className="text-casino-gold">🎮 Демо режим - бесплатно</span>
-              )}
-              {mode === 'real' && (
-                <span className="text-casino-purple">💰 Реальные деньги</span>
-              )}
+          ) : loadError ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center px-6">
+                <div className="text-red-500 text-4xl mb-3">⚠</div>
+                <p className="text-white font-bold mb-1">Не удалось загрузить игру</p>
+                <p className="text-gray-400 text-sm mb-4">{loadError}</p>
+                <button onClick={onClose} className="px-6 py-2 bg-yellow-500 text-black rounded-lg font-bold text-sm">
+                  Закрыть
+                </button>
+              </div>
             </div>
-            <div className="text-gray-500">
-              ESC - закрыть • F11 - полный экран
-            </div>
-          </div>
+          ) : gameHtml ? (
+            <iframe
+              ref={iframeRef}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+              allow="autoplay; fullscreen"
+              title={game?.name || 'Game'}
+            />
+          ) : null}
         </div>
       </div>
     </div>
