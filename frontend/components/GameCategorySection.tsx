@@ -75,7 +75,10 @@ export default function GameCategorySection({
 
         {/* Game Images Row (Center) */}
         {gameImages.length > 0 && (
-          <div className="flex justify-center items-center gap-2 md:gap-5 overflow-x-auto scrollbar-hide max-w-full px-2">
+          <div className="flex justify-center items-center gap-2 md:gap-5 max-w-full px-2" style={{
+            overflowX: 'hidden',
+            overflowY: 'hidden'
+          }}>
             {gameImages.map((img, idx) => (
               <div 
                 key={idx}

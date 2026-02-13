@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -20,12 +21,12 @@ import {
   ChevronRight
 } from 'lucide-react';
 import Layout from '../../components/Layout';
-import AuthGuard from '../../components/AuthGuard';
 import GameCard from '../../components/GameCard';
 import GameModal from '../../components/GameModal';
 import PromoBannerSlider from '../../components/PromoBannerSlider';
 import { useGamesQuery } from '../../hooks/useGames';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAuthStore } from '../../store/authStore';
 
 import GameCategorySection from '../../components/GameCategorySection';
 import { toast } from 'react-hot-toast';
@@ -49,6 +50,8 @@ const sortOptions = [
 
 export default function GamesPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
   const { data: gamesData, isLoading } = useGamesQuery();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -179,8 +182,26 @@ export default function GamesPage() {
     });
   };
 
+  const handleCategoryClick = (e: React.MouseEvent, category: string) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Войдите, чтобы начать играть!', {
+        style: {
+          background: '#1F2937',
+          color: '#fff',
+          border: '1px solid #D4AF37',
+        },
+        icon: '🔒',
+      });
+      setTimeout(() => router.push('/login'), 1500);
+      return;
+    }
+    setSelectedCategory(category);
+    window.scrollTo({ top: 600, behavior: 'smooth' });
+  };
+
   return (
-    <AuthGuard>
+    <>
       <Head>
         <title>Игры - AUREX Casino</title>
       </Head>
@@ -213,7 +234,7 @@ export default function GamesPage() {
                   title="Слоты"
                   onlineCount={1773}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); setSelectedCategory('slots'); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                  onClick={(e) => handleCategoryClick(e, 'slots')}
                   backgroundImage="/images/slots-bg.jpg"
                   gameImages={[
                     '/images/games/slots/big-bamboo.png',
@@ -229,7 +250,7 @@ export default function GamesPage() {
                   title="Live Dealers"
                   onlineCount={1773}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); setSelectedCategory('live'); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                  onClick={(e) => handleCategoryClick(e, 'live')}
                   backgroundImage="/images/live-bg.jpg"
                   gameImages={[
                     '/images/games/live/lightning-roulette.png',
@@ -412,6 +433,6 @@ export default function GamesPage() {
         mode={gameMode}
         onModeChange={handleGameModeChange}
       />
-    </AuthGuard>
+    </>
   );
 }
