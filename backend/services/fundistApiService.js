@@ -373,10 +373,42 @@ class FundistApiService {
     });
 
     const url = `${this.baseUrl}/System/Api/${this.apiKey}/User/AuthHTML/?&${params.toString()}`;
-    const response = await axios.get(url, { timeout: 30000 });
 
-    if (response.data && typeof response.data === 'string' && response.data.startsWith('1,')) {
-      const htmlFragment = response.data.substring(2);
+    let response;
+    try {
+      response = await axios.get(url, { timeout: 30000 });
+    } catch (axiosErr) {
+      // Fundist returned non-200 HTTP status — translate to a human-readable message
+      const status = axiosErr?.response?.status;
+      const body = String(axiosErr?.response?.data || '').slice(0, 300);
+      if (body.includes('Wrong authorization IP') || body.startsWith('12,')) {
+        throw new Error('IP сервера не в вайтлисте Fundist. Обратитесь в поддержку SoftGamings.');
+      }
+      throw new Error(`Провайдер недоступен (HTTP ${status || '?'}). Попробуйте позже.`);
+    }
+
+    const data = String(response.data || '');
+
+    // Fundist error codes in body (e.g. "12,Wrong authorization IP", "24,Redirect error,...")
+    if (data.startsWith('12,')) {
+      throw new Error('IP сервера не в вайтлисте Fundist. Обратитесь в поддержку SoftGamings.');
+    }
+    if (data.startsWith('24,')) {
+      // Parse Fundist redirect errors for better UX
+      if (data.includes('Currency not supported')) throw new Error('Валюта не поддерживается этой игрой');
+      if (data.includes('Demo not supported')) throw new Error('Демо-режим недоступен для этой игры');
+      if (data.includes('Restricted country')) throw new Error('Игра недоступна в вашей стране');
+      throw new Error(`Игра не может быть запущена: ${data.slice(3, 200)}`);
+    }
+    if (data.startsWith('15,')) {
+      throw new Error('Ошибка авторизации (неверный хеш). Обратитесь в поддержку.');
+    }
+    if (data.startsWith('17,')) {
+      throw new Error('Пользователь не найден или заблокирован');
+    }
+
+    if (data.startsWith('1,')) {
+      const htmlFragment = data.substring(2);
 
       if (!demo) {
         await pool.query(
@@ -389,7 +421,8 @@ class FundistApiService {
       return { success: true, html: htmlFragment, tid };
     }
 
-    throw new Error(`Game launch failed: ${String(response.data).slice(0, 300)}`);
+    // Any other unexpected response
+    throw new Error(`Не удалось запустить игру: ${data.slice(0, 200)}`);
   }
 }
 
